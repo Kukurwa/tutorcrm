@@ -1,0 +1,17 @@
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/storybook-static
+**/coverage
+.git
+.github
+.vscode
+.idea
+.env
+.env.*
+!.env.example
+*.log
+Dockerfile*
+docker-compose*.yml
+.DS_Store

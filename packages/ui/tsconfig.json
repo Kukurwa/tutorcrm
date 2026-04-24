@@ -1,0 +1,4 @@
+{
+  "extends": "@tutorcrm/tsconfig/library.json",
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

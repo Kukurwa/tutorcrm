@@ -1,6 +1,19 @@
 'use client';
 
-import { Download } from 'lucide-react';
+import {
+  AlertTriangle,
+  Banknote,
+  Clock,
+  Download,
+  FileText,
+  GraduationCap,
+  Inbox,
+  ReceiptText,
+  ShieldCheck,
+  Sprout,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import {
@@ -9,6 +22,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  cn,
   FormField,
   Input,
   Select,
@@ -16,8 +30,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  StatusBadge,
-  type StatusTone,
 } from '@tutorcrm/ui';
 
 import { api, ApiClientError } from '@/lib/api-client';
@@ -47,6 +59,18 @@ interface Props {
   showDispatcherFilter: boolean;
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  lead_created: 'Лиды',
+  request_created: 'Заявка сформирована',
+  published: 'Опубликовано',
+  searching_tutor: 'Поиск репетитора',
+  trial_scheduled: 'Пробное назначено',
+  trial_done: 'Пробное проведено',
+  active: 'Активные',
+  closed_won: 'Успешно закрыто',
+  closed_lost: 'Отказ',
+};
+
 export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: Props) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -75,6 +99,9 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
   function downloadCsv(type: 'contracts' | 'requests' | 'invoices') {
     window.location.href = `/api/metrics/export?type=${type}`;
   }
+
+  const funnelEntries = data ? Object.entries(data.funnel) : [];
+  const funnelMax = funnelEntries.length ? Math.max(...funnelEntries.map(([, v]) => v), 1) : 1;
 
   return (
     <div className="space-y-6">
@@ -131,59 +158,106 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
       </Card>
 
       {!data ? (
-        <p className="text-sm text-muted-foreground">Загрузка метрик…</p>
+        <p className="text-muted-foreground text-sm">Загрузка метрик…</p>
       ) : (
         <>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            Операции
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric title="Активные контракты" value={data.operations.activeContracts} tone="success" />
-            <Metric title="Непрочитанные диалоги" value={data.operations.unreadDialogs} tone="warning" />
-            <Metric title="Новые лиды" value={data.operations.newLeads} tone="info" />
-            <Metric title="Просроченные задачи" value={data.operations.overdueTasks} tone="danger" />
+          <div>
+            <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+              Операции
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricTile
+                icon={ShieldCheck}
+                title="Активные контракты"
+                value={data.operations.activeContracts}
+                gradient="from-emerald-50 to-emerald-100"
+                iconBg="bg-emerald-500"
+              />
+              <MetricTile
+                icon={Inbox}
+                title="Непрочитанные диалоги"
+                value={data.operations.unreadDialogs}
+                gradient="from-amber-50 to-amber-100"
+                iconBg="bg-amber-500"
+              />
+              <MetricTile
+                icon={Sprout}
+                title="Новые лиды"
+                value={data.operations.newLeads}
+                gradient="from-blue-50 to-blue-100"
+                iconBg="bg-blue-500"
+              />
+              <MetricTile
+                icon={AlertTriangle}
+                title="Просроченные задачи"
+                value={data.operations.overdueTasks}
+                gradient="from-rose-50 to-rose-100"
+                iconBg="bg-rose-500"
+              />
+            </div>
           </div>
 
-          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            Финансы
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric
-              title="Выставлено клиентам"
-              value={formatCurrency(data.finance.totalInvoicedClient)}
-              tone="neutral"
-            />
-            <Metric
-              title="Оплачено клиентами"
-              value={formatCurrency(data.finance.totalPaidClient)}
-              tone="success"
-            />
-            <Metric
-              title="Комиссия (прогноз)"
-              value={formatCurrency(Math.round(data.finance.totalCommissionProjected))}
-              tone="info"
-            />
-            <Metric
-              title="Просроченные инвойсы"
-              value={data.finance.overdueInvoices}
-              tone="danger"
-            />
+          <div>
+            <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+              Финансы
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricTile
+                icon={Banknote}
+                title="Выставлено клиентам"
+                value={formatCurrency(data.finance.totalInvoicedClient)}
+                gradient="from-slate-50 to-slate-100"
+                iconBg="bg-slate-500"
+              />
+              <MetricTile
+                icon={Wallet}
+                title="Оплачено клиентами"
+                value={formatCurrency(data.finance.totalPaidClient)}
+                gradient="from-emerald-50 to-emerald-100"
+                iconBg="bg-emerald-500"
+              />
+              <MetricTile
+                icon={TrendingUp}
+                title="Комиссия (прогноз)"
+                value={formatCurrency(Math.round(data.finance.totalCommissionProjected))}
+                gradient="from-indigo-50 to-indigo-100"
+                iconBg="bg-indigo-500"
+              />
+              <MetricTile
+                icon={Clock}
+                title="Просроченные инвойсы"
+                value={data.finance.overdueInvoices}
+                gradient="from-rose-50 to-rose-100"
+                iconBg="bg-rose-500"
+              />
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Воронка</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="text-muted-foreground h-4 w-4" />
+                  Воронка по стадиям
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                {Object.keys(data.funnel).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">В выбранном диапазоне заявок нет.</p>
+                {funnelEntries.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">В выбранном диапазоне заявок нет.</p>
                 ) : (
-                  <ul className="space-y-2">
-                    {Object.entries(data.funnel).map(([stage, count]) => (
-                      <li key={stage} className="flex items-center justify-between text-sm">
-                        <span className="font-mono text-xs">{stage}</span>
-                        <span className="font-medium">{count}</span>
+                  <ul className="space-y-3">
+                    {funnelEntries.map(([stage, count]) => (
+                      <li key={stage} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{STAGE_LABELS[stage] ?? stage}</span>
+                          <span className="font-semibold tabular-nums">{count}</span>
+                        </div>
+                        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500"
+                            style={{ width: `${(count / funnelMax) * 100}%` }}
+                          />
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -193,15 +267,18 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">По предметам</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <GraduationCap className="text-muted-foreground h-4 w-4" />
+                  По предметам
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {data.bySubject.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Нет данных.</p>
+                  <p className="text-muted-foreground text-sm">Нет данных.</p>
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr className="text-muted-foreground border-b text-xs uppercase tracking-wide">
                         <th className="pb-2 text-left font-medium">Предмет</th>
                         <th className="pb-2 text-right font-medium">Заявок</th>
                         <th className="pb-2 text-right font-medium">Контрактов</th>
@@ -210,9 +287,11 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                     <tbody>
                       {data.bySubject.map((r) => (
                         <tr key={r.subjectId} className="border-b last:border-b-0">
-                          <td className="py-1">{r.name}</td>
-                          <td className="py-1 text-right font-mono">{r.requests}</td>
-                          <td className="py-1 text-right font-mono">{r.contracts}</td>
+                          <td className="py-2">{r.name}</td>
+                          <td className="py-2 text-right font-medium tabular-nums">{r.requests}</td>
+                          <td className="py-2 text-right font-medium tabular-nums text-emerald-600">
+                            {r.contracts}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -225,17 +304,33 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Топ репетиторов</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <TrendingUp className="text-muted-foreground h-4 w-4" />
+                  Топ репетиторов
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {data.tutors.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Нет активных контрактов.</p>
+                  <p className="text-muted-foreground text-sm">Нет активных контрактов.</p>
                 ) : (
-                  <ul className="space-y-1 text-sm">
-                    {data.tutors.map((t) => (
-                      <li key={t.id} className="flex items-center justify-between">
-                        <span>{t.name}</span>
-                        <span className="font-mono">{t.activeContracts}</span>
+                  <ul className="space-y-2">
+                    {data.tutors.map((t, i) => (
+                      <li key={t.id} className="flex items-center gap-3 text-sm">
+                        <span
+                          className={cn(
+                            'inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
+                            i === 0 && 'bg-amber-100 text-amber-700',
+                            i === 1 && 'bg-slate-100 text-slate-700',
+                            i === 2 && 'bg-orange-100 text-orange-700',
+                            i > 2 && 'bg-muted text-muted-foreground',
+                          )}
+                        >
+                          {i + 1}
+                        </span>
+                        <span className="flex-1 font-medium">{t.name}</span>
+                        <span className="text-muted-foreground tabular-nums">
+                          {t.activeContracts} контр.
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -245,7 +340,10 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Экспорт</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ReceiptText className="text-muted-foreground h-4 w-4" />
+                  Экспорт
+                </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => downloadCsv('contracts')}>
@@ -266,25 +364,39 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
   );
 }
 
-function Metric({
+function MetricTile({
+  icon: Icon,
   title,
   value,
-  tone,
+  gradient,
+  iconBg,
 }: {
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   value: number | string;
-  tone: StatusTone;
+  gradient: string;
+  iconBg: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-          <StatusBadge tone={tone} label="" className="px-1" />
+    <Card
+      className={cn(
+        'overflow-hidden border-transparent bg-gradient-to-br shadow-sm transition-shadow hover:shadow-md',
+        gradient,
+      )}
+    >
+      <CardContent className="flex items-center gap-3 p-4">
+        <div
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm',
+            iconBg,
+          )}
+        >
+          <Icon className="h-5 w-5" />
         </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="text-3xl font-semibold">{value}</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-slate-600">{title}</div>
+          <div className="text-2xl font-semibold tabular-nums text-slate-900">{value}</div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -7,7 +7,7 @@ import { UsersList } from './users-list';
 
 export const metadata = { title: 'Пользователи — TutorCRM' };
 
-export default async function DispatchersPage() {
+export default async function UsersPage() {
   await requireRole('admin');
 
   const users = await usersStore.list();

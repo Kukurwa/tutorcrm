@@ -1,6 +1,5 @@
 import {
   Calendar,
-  CheckSquare,
   Contact,
   FileText,
   GraduationCap,
@@ -10,7 +9,6 @@ import {
   MessageSquare,
   Settings,
   ShieldCheck,
-  Sprout,
   User,
   Users,
 } from 'lucide-react';
@@ -25,11 +23,9 @@ const ICONS: Record<NavIconName, React.ComponentType<{ className?: string }>> = 
   contracts: ShieldCheck,
   clients: Contact,
   tutors: GraduationCap,
-  leadgen: Sprout,
-  dispatchers: Users,
+  users: Users,
   scripts: MessageSquare,
   settings: Settings,
-  tasks: CheckSquare,
   calendar: Calendar,
   profile: User,
 };

@@ -1,8 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import {
@@ -22,12 +21,6 @@ import {
   Input,
   Label,
   RoleBadge,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Separator,
   Switch,
   toast,
 } from '@tutorcrm/ui';
@@ -49,9 +42,6 @@ const CATEGORY_LABELS: Record<keyof UserSettings['notifications'], string> = {
 };
 
 export function ProfileForm({ user, settings: initial }: Props) {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const [settings, setSettings] = useState<UserSettings>(initial);
 
   async function updateSettings(patch: Partial<UserSettings>) {
@@ -81,15 +71,15 @@ export function ProfileForm({ user, settings: initial }: Props) {
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Имя</div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide">Имя</div>
             <div className="font-medium">{user.name}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Email</div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide">Email</div>
             <div>{user.email}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground">Роль</div>
+            <div className="text-muted-foreground text-xs uppercase tracking-wide">Роль</div>
             <RoleBadge role={user.role} />
           </div>
         </CardContent>
@@ -122,7 +112,9 @@ export function ProfileForm({ user, settings: initial }: Props) {
                     id={`notif-${cat}`}
                     checked={settings.notifications[cat] ?? false}
                     onCheckedChange={(checked) =>
-                      updateSettings({ notifications: { ...settings.notifications, [cat]: checked } })
+                      updateSettings({
+                        notifications: { ...settings.notifications, [cat]: checked },
+                      })
                     }
                   />
                 </div>
@@ -170,31 +162,6 @@ export function ProfileForm({ user, settings: initial }: Props) {
                   disabled={!settings.quietHours.enabled}
                 />
               </FormField>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Тема</CardTitle>
-            <CardDescription>Светлая / тёмная / системная.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Separator className="mb-4" />
-            <div className="flex items-center gap-3">
-              <Select
-                value={mounted ? (theme ?? 'system') : 'system'}
-                onValueChange={(v) => setTheme(v)}
-              >
-                <SelectTrigger className="w-48" suppressHydrationWarning>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="system">Системная</SelectItem>
-                  <SelectItem value="light">Светлая</SelectItem>
-                  <SelectItem value="dark">Тёмная</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
         </Card>

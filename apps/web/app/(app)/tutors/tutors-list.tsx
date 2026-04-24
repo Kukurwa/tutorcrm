@@ -32,8 +32,22 @@ import {
 
 import { api, ApiClientError } from '@/lib/api-client';
 
+export interface TutorStats {
+  successTrials: number;
+  totalTrials: number;
+  successRate: number | null;
+  activeContracts: number;
+  totalContracts: number;
+  closedContracts: number;
+  oneTimeGiven: number;
+}
+
+export interface TutorWithStats extends Tutor {
+  stats: TutorStats;
+}
+
 interface Props {
-  initial: Tutor[];
+  initial: TutorWithStats[];
   subjects: { id: string; name: string }[];
 }
 
@@ -49,15 +63,27 @@ const STATUS_LABEL: Record<TutorStatus, string> = {
   blocked: 'Заблокирован',
 };
 
+const emptyStats: TutorStats = {
+  successTrials: 0,
+  totalTrials: 0,
+  successRate: null,
+  activeContracts: 0,
+  totalContracts: 0,
+  closedContracts: 0,
+  oneTimeGiven: 0,
+};
+
 export function TutorsList({ initial, subjects }: Props) {
-  const [tutors, setTutors] = useState<Tutor[]>(initial);
+  const [tutors, setTutors] = useState<TutorWithStats[]>(initial);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Tutor | null>(null);
 
   async function create(t: Omit<Tutor, 'id' | 'createdAt' | 'updatedAt'>) {
     try {
       const res = await api.post<{ tutor: Tutor }>('/api/tutors', t);
-      setTutors((p) => [...p, res.tutor].sort((a, b) => a.name.localeCompare(b.name)));
+      setTutors((p) =>
+        [...p, { ...res.tutor, stats: emptyStats }].sort((a, b) => a.name.localeCompare(b.name)),
+      );
       setCreating(false);
       toast.success('Репетитор добавлен');
     } catch (err) {
@@ -68,7 +94,7 @@ export function TutorsList({ initial, subjects }: Props) {
   async function update(id: string, patch: Partial<Tutor>) {
     try {
       const res = await api.patch<{ tutor: Tutor }>(`/api/tutors/${id}`, patch);
-      setTutors((p) => p.map((t) => (t.id === id ? res.tutor : t)));
+      setTutors((p) => p.map((t) => (t.id === id ? { ...res.tutor, stats: t.stats } : t)));
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
     }
@@ -95,8 +121,8 @@ export function TutorsList({ initial, subjects }: Props) {
               cell: (t) => (
                 <div>
                   <div className="font-medium">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {t.phone ?? 'без телефона'} · опыт {t.experienceYears} лет
+                  <div className="text-muted-foreground text-xs">
+                    {t.phone ?? 'без телефона'} · опыт {t.experienceYears} лет · {t.hourlyRate}₴/ч
                   </div>
                 </div>
               ),
@@ -109,10 +135,7 @@ export function TutorsList({ initial, subjects }: Props) {
                   {t.subjects.map((sid) => {
                     const s = subjects.find((x) => x.id === sid);
                     return s ? (
-                      <span
-                        key={sid}
-                        className="rounded bg-muted px-1.5 py-0.5 text-xs"
-                      >
+                      <span key={sid} className="bg-muted rounded px-1.5 py-0.5 text-xs">
                         {s.name}
                       </span>
                     ) : null;
@@ -121,15 +144,48 @@ export function TutorsList({ initial, subjects }: Props) {
               ),
             },
             {
-              key: 'rate',
-              header: 'Ставка',
-              align: 'right',
-              cell: (t) => <span className="font-mono text-sm">{t.hourlyRate}/ч</span>,
+              key: 'trials',
+              header: 'Пробные',
+              align: 'center',
+              cell: (t) => (
+                <div className="text-sm">
+                  <span className="font-semibold text-emerald-600">{t.stats.successTrials}</span>
+                  <span className="text-muted-foreground">/{t.stats.totalTrials}</span>
+                  {t.stats.successRate !== null ? (
+                    <div className="text-muted-foreground text-xs">
+                      {t.stats.successRate}% успех
+                    </div>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: 'contracts',
+              header: 'На контракте',
+              align: 'center',
+              cell: (t) => (
+                <div className="text-sm">
+                  <span className="font-semibold">{t.stats.activeContracts}</span>
+                  {t.stats.closedContracts > 0 ? (
+                    <div className="text-muted-foreground text-xs">
+                      всего {t.stats.totalContracts}
+                    </div>
+                  ) : null}
+                </div>
+              ),
+            },
+            {
+              key: 'onetime',
+              header: 'Разовых',
+              align: 'center',
+              cell: (t) => <span className="text-sm font-semibold">{t.stats.oneTimeGiven}</span>,
             },
             {
               key: 'status',
               header: 'Статус',
-              cell: (t) => <StatusBadge tone={STATUS_TONE[t.status]} label={STATUS_LABEL[t.status]} />,
+              cell: (t) => (
+                <StatusBadge tone={STATUS_TONE[t.status]} label={STATUS_LABEL[t.status]} />
+              ),
             },
           ]}
         />
@@ -213,9 +269,7 @@ function TutorDialog({
                   <Checkbox
                     checked={picked.includes(s.id)}
                     onCheckedChange={(checked) => {
-                      setPicked((p) =>
-                        checked ? [...p, s.id] : p.filter((x) => x !== s.id),
-                      );
+                      setPicked((p) => (checked ? [...p, s.id] : p.filter((x) => x !== s.id)));
                     }}
                   />
                   <Label>{s.name}</Label>
@@ -240,7 +294,9 @@ function TutorDialog({
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
           <Button
             disabled={!name.trim()}
             onClick={() =>

@@ -1,15 +1,12 @@
 'use client';
 
-import { LogOut, Moon, Sun, UserCog } from 'lucide-react';
+import { LogOut, UserCog } from 'lucide-react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import { useTheme } from 'next-themes';
-import { useEffect, useState } from 'react';
 
 import {
   Avatar,
   AvatarFallback,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -42,43 +39,24 @@ function initials(name: string): string {
 }
 
 export function Topbar({ user }: TopbarProps) {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-background px-3 sm:px-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+    <header className="bg-background flex h-14 items-center justify-between border-b px-3 sm:px-4">
+      <div className="text-muted-foreground flex items-center gap-2 text-sm">
         <MobileSidebar role={user.role} />
       </div>
 
       <div className="flex items-center gap-2">
         <NotificationBell />
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Переключить тему"
-          onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-          suppressHydrationWarning
-        >
-          {!mounted ? (
-            <span className="h-4 w-4" />
-          ) : resolvedTheme === 'dark' ? (
-            <Sun className="h-4 w-4" />
-          ) : (
-            <Moon className="h-4 w-4" />
-          )}
-        </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-accent">
+            <button className="hover:bg-accent flex items-center gap-2 rounded-md px-2 py-1">
               <Avatar className="h-8 w-8">
                 <AvatarFallback>{initials(user.name)}</AvatarFallback>
               </Avatar>
               <div className="hidden text-left md:block">
                 <div className="text-sm font-medium leading-tight">{user.name}</div>
-                <div className="text-xs text-muted-foreground">{user.email}</div>
+                <div className="text-muted-foreground text-xs">{user.email}</div>
               </div>
               <RoleBadge role={user.role} className="hidden md:inline-flex" />
             </button>

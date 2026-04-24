@@ -76,7 +76,7 @@ export function UsersList({ initial }: { initial: UserPublic[] }) {
               cell: (u) => (
                 <div>
                   <div className="font-medium">{u.name}</div>
-                  <div className="text-xs text-muted-foreground">{u.email}</div>
+                  <div className="text-muted-foreground text-xs">{u.email}</div>
                 </div>
               ),
             },
@@ -84,10 +84,7 @@ export function UsersList({ initial }: { initial: UserPublic[] }) {
               key: 'role',
               header: 'Роль',
               cell: (u) => (
-                <Select
-                  value={u.role}
-                  onValueChange={(v) => update(u.id, { role: v as Role })}
-                >
+                <Select value={u.role} onValueChange={(v) => update(u.id, { role: v as Role })}>
                   <SelectTrigger className="h-8 w-36">
                     <SelectValue>
                       <RoleBadge role={u.role} />
@@ -194,7 +191,9 @@ function CreateUserDialog({
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
           <Button
             disabled={!valid}
             onClick={() => {

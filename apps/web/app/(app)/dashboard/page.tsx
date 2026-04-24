@@ -41,12 +41,12 @@ export default async function DashboardPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Создать лид</CardTitle>
-              <CardDescription>Быстрая форма на странице LeadGen.</CardDescription>
+              <CardTitle className="text-base">Воронка</CardTitle>
+              <CardDescription>Ваши лиды и заявки.</CardDescription>
             </CardHeader>
             <CardContent>
               <Button asChild size="sm">
-                <Link href="/leadgen">К форме</Link>
+                <Link href="/funnel">Открыть</Link>
               </Button>
             </CardContent>
           </Card>

@@ -22,16 +22,14 @@ export function MobileSidebar({ role }: { role: Role }) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden"
-          aria-label="Открыть меню"
-        >
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Открыть меню">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="flex w-64 flex-col p-0">
+      <SheetContent
+        side="left"
+        className="bg-card text-card-foreground dark flex w-64 flex-col p-0"
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>Навигация</SheetTitle>
           <SheetDescription>Основное меню TutorCRM</SheetDescription>

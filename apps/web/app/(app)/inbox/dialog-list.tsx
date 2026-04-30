@@ -1,9 +1,18 @@
 'use client';
 
-import { PenSquare, Search } from 'lucide-react';
+import {
+  Folder,
+  FolderPlus,
+  GraduationCap,
+  MessagesSquare,
+  PenSquare,
+  Search,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import { useState } from 'react';
 
-import type { Dialog, MessengerChannel } from '@tutorcrm/contracts';
+import type { Dialog, FunnelStage, InboxFolder, MessengerChannel } from '@tutorcrm/contracts';
 import {
   Button,
   cn,
@@ -27,12 +36,22 @@ import {
 
 import { formatRelativeTime } from '@/lib/format';
 
+import type { InboxFilters } from './inbox-workspace';
+
 const CHANNEL_ICON: Record<MessengerChannel, string> = {
   telegram: 'TG',
   whatsapp: 'WA',
   viber: 'VB',
   instagram: 'IG',
   facebook: 'FB',
+};
+
+const CHANNEL_LABEL: Record<MessengerChannel, string> = {
+  telegram: 'Telegram',
+  whatsapp: 'WhatsApp',
+  viber: 'Viber',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
 };
 
 const STAGE_LABEL: Record<Dialog['stage'], string> = {
@@ -53,6 +72,12 @@ interface Props {
   items: Dialog[];
   loading: boolean;
   activeId: string | null;
+  stages: FunnelStage[];
+  folders: InboxFolder[];
+  filters: InboxFilters;
+  onFiltersChange: (next: InboxFilters) => void;
+  onCreateFolder: (name: string) => void;
+  onDeleteFolder: (id: string) => void;
   onSelect: (id: string) => void;
   onInitiate: (d: {
     channel: MessengerChannel;
@@ -62,13 +87,51 @@ interface Props {
   }) => void;
 }
 
-export function DialogList({ items, loading, activeId, onSelect, onInitiate }: Props) {
+type SystemFolder = 'clients' | 'tutors' | 'work_groups';
+
+export function DialogList({
+  items,
+  loading,
+  activeId,
+  stages,
+  folders,
+  filters,
+  onFiltersChange,
+  onCreateFolder,
+  onDeleteFolder,
+  onSelect,
+  onInitiate,
+}: Props) {
   const [q, setQ] = useState('');
-  const [mineOnly, setMineOnly] = useState(false);
   const [initiateOpen, setInitiateOpen] = useState(false);
+  const [folderOpen, setFolderOpen] = useState(false);
+
+  // Активная системная папка
+  const activeSystem: SystemFolder =
+    filters.partyKind === 'tutor'
+      ? 'tutors'
+      : filters.partyKind === 'work_group'
+        ? 'work_groups'
+        : 'clients';
+  const isCustomFolder = filters.folderId !== null;
+
+  function setSystemFolder(folder: SystemFolder) {
+    onFiltersChange({
+      ...filters,
+      folderId: null,
+      partyKind: folder === 'tutors' ? 'tutor' : folder === 'work_groups' ? 'work_group' : null,
+    });
+  }
+
+  function setCustomFolder(folderId: string) {
+    onFiltersChange({
+      ...filters,
+      folderId,
+      partyKind: null,
+    });
+  }
 
   const filtered = items.filter((d) => {
-    if (mineOnly && !d.dispatcherId) return true;
     if (q.trim()) {
       const needle = q.toLowerCase();
       if (
@@ -82,10 +145,10 @@ export function DialogList({ items, loading, activeId, onSelect, onInitiate }: P
   });
 
   return (
-    <aside className="flex h-full flex-col border-r bg-card">
+    <aside className="bg-card flex h-full flex-col border-r">
       <div className="flex items-center gap-2 border-b p-3">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Поиск…"
             value={q}
@@ -93,23 +156,92 @@ export function DialogList({ items, loading, activeId, onSelect, onInitiate }: P
             className="pl-8"
           />
         </div>
-        <Button size="icon" variant="outline" onClick={() => setInitiateOpen(true)} aria-label="Написать первым">
+        <Button
+          size="icon"
+          variant="outline"
+          onClick={() => setInitiateOpen(true)}
+          aria-label="Написать первым"
+        >
           <PenSquare className="h-4 w-4" />
         </Button>
       </div>
-      <div className="flex items-center gap-2 border-b px-3 py-2 text-xs text-muted-foreground">
-        <button
-          className={cn('rounded px-2 py-1', !mineOnly && 'bg-muted font-medium text-foreground')}
-          onClick={() => setMineOnly(false)}
+
+      {/* Папки */}
+      <div className="border-b px-2 py-2">
+        <div className="flex flex-wrap items-center gap-1">
+          <FolderButton
+            label="Клиенты"
+            icon={<MessagesSquare className="h-3.5 w-3.5" />}
+            active={!isCustomFolder && activeSystem === 'clients'}
+            onClick={() => setSystemFolder('clients')}
+          />
+          <FolderButton
+            label="Репетиторы"
+            icon={<GraduationCap className="h-3.5 w-3.5" />}
+            active={!isCustomFolder && activeSystem === 'tutors'}
+            onClick={() => setSystemFolder('tutors')}
+          />
+          <FolderButton
+            label="Раб. группы"
+            icon={<Users className="h-3.5 w-3.5" />}
+            active={!isCustomFolder && activeSystem === 'work_groups'}
+            onClick={() => setSystemFolder('work_groups')}
+          />
+          {folders.map((f) => (
+            <FolderButton
+              key={f.id}
+              label={f.name}
+              icon={<Folder className="h-3.5 w-3.5" />}
+              active={filters.folderId === f.id}
+              onClick={() => setCustomFolder(f.id)}
+              onDelete={() => onDeleteFolder(f.id)}
+            />
+          ))}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground h-7 px-2 text-xs"
+            onClick={() => setFolderOpen(true)}
+          >
+            <FolderPlus className="h-3.5 w-3.5" /> Папка
+          </Button>
+        </div>
+      </div>
+
+      {/* Фильтры мессенджер + стадия */}
+      <div className="grid grid-cols-2 gap-2 border-b px-3 py-2">
+        <Select
+          value={filters.channel ?? '__all'}
+          onValueChange={(v) => onFiltersChange({ ...filters, channel: v === '__all' ? null : v })}
         >
-          Все
-        </button>
-        <button
-          className={cn('rounded px-2 py-1', mineOnly && 'bg-muted font-medium text-foreground')}
-          onClick={() => setMineOnly(true)}
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Мессенджер" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Все мессенджеры</SelectItem>
+            {(Object.keys(CHANNEL_LABEL) as MessengerChannel[]).map((ch) => (
+              <SelectItem key={ch} value={ch}>
+                {CHANNEL_LABEL[ch]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.stage ?? '__all'}
+          onValueChange={(v) => onFiltersChange({ ...filters, stage: v === '__all' ? null : v })}
         >
-          Не назначенные
-        </button>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Стадия" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all">Все стадии</SelectItem>
+            {stages.map((s) => (
+              <SelectItem key={s.kind} value={s.kind}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <ul className="flex-1 overflow-y-auto">
@@ -123,31 +255,27 @@ export function DialogList({ items, loading, activeId, onSelect, onInitiate }: P
             ))}
           </li>
         ) : filtered.length === 0 ? (
-          <li className="p-8 text-center text-sm text-muted-foreground">
-            Нет диалогов
-          </li>
+          <li className="text-muted-foreground p-8 text-center text-sm">Нет диалогов</li>
         ) : (
           filtered.map((d) => (
             <li key={d.id}>
               <button
                 onClick={() => onSelect(d.id)}
                 className={cn(
-                  'flex w-full flex-col items-start gap-1 border-b px-3 py-2 text-left transition-colors hover:bg-muted/50',
+                  'hover:bg-muted/50 flex w-full flex-col items-start gap-1 border-b px-3 py-2 text-left transition-colors',
                   activeId === d.id && 'bg-muted/70',
                 )}
               >
                 <div className="flex w-full items-center gap-2">
-                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase">
+                  <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px] uppercase">
                     {CHANNEL_ICON[d.channel]}
                   </span>
                   <span className="flex-1 truncate text-sm font-medium">{d.clientName}</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-muted-foreground text-[10px]">
                     {formatRelativeTime(d.lastMessageAt)}
                   </span>
                 </div>
-                <p className="line-clamp-1 text-xs text-muted-foreground">
-                  {d.lastMessagePreview}
-                </p>
+                <p className="text-muted-foreground line-clamp-1 text-xs">{d.lastMessagePreview}</p>
                 <div className="flex items-center gap-1.5">
                   <StatusBadge
                     tone={d.stage === 'new_dialog' ? 'warning' : 'info'}
@@ -155,7 +283,7 @@ export function DialogList({ items, loading, activeId, onSelect, onInitiate }: P
                     className="text-[10px]"
                   />
                   {d.unread > 0 ? (
-                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
+                    <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 text-[10px] font-medium">
                       {d.unread}
                     </span>
                   ) : null}
@@ -177,7 +305,105 @@ export function DialogList({ items, loading, activeId, onSelect, onInitiate }: P
           setInitiateOpen(false);
         }}
       />
+      <CreateFolderModal
+        open={folderOpen}
+        onClose={() => setFolderOpen(false)}
+        onCreate={(name) => {
+          onCreateFolder(name);
+          setFolderOpen(false);
+        }}
+      />
     </aside>
+  );
+}
+
+function FolderButton({
+  label,
+  icon,
+  active,
+  onClick,
+  onDelete,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <div className="group inline-flex items-center">
+      <Button
+        variant={active ? 'secondary' : 'ghost'}
+        size="sm"
+        onClick={onClick}
+        className={cn('h-7 px-2 text-xs font-normal', onDelete && 'pr-1')}
+      >
+        {icon}
+        {label}
+        {onDelete ? (
+          <span
+            role="button"
+            aria-label={`Удалить папку ${label}`}
+            className="text-muted-foreground hover:text-foreground ml-1 inline-flex h-4 w-4 items-center justify-center rounded opacity-0 transition-opacity group-hover:opacity-70"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="h-3 w-3" />
+          </span>
+        ) : null}
+      </Button>
+    </div>
+  );
+}
+
+function CreateFolderModal({
+  open,
+  onClose,
+  onCreate,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (name: string) => void;
+}) {
+  const [name, setName] = useState('');
+  return (
+    <DialogRoot
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          onClose();
+          setName('');
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Новая папка</DialogTitle>
+          <DialogDescription>
+            Группировка диалогов. Назначить диалог можно из контекстной панели.
+          </DialogDescription>
+        </DialogHeader>
+        <FormField label="Название" required>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </FormField>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
+          <Button
+            disabled={!name.trim()}
+            onClick={() => {
+              onCreate(name.trim());
+              setName('');
+            }}
+          >
+            Создать
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
   );
 }
 
@@ -249,7 +475,9 @@ function InitiateDialogModal({
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
           <Button
             disabled={!contact.trim() || !firstMessage.trim()}
             onClick={() => {

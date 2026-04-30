@@ -11,7 +11,13 @@ import { requireApiRole } from '@/lib/api/guards';
 import { generateId, nowIso } from '@/lib/api/id';
 import { errorResponse, parseJson } from '@/lib/api/response';
 import { normalizePhone } from '@/lib/phone';
-import { clientsStore, dialogsStore, leadsStore, MockStoreError } from '@/mocks/store';
+import {
+  clientsStore,
+  dialogsStore,
+  leadsStore,
+  MockStoreError,
+  subjectsStore,
+} from '@/mocks/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,10 +35,13 @@ export async function POST(req: Request, { params }: Ctx) {
   try {
     const dialog = await dialogsStore.requireById(params.id);
     const phone = normalizePhone(parsed.data.phone);
+    const subject = parsed.data.subjectId
+      ? await subjectsStore.findById(parsed.data.subjectId)
+      : null;
+    const subjectName = subject?.name ?? null;
 
     let clientId = dialog.clientId;
     if (!clientId) {
-      // Look up by phone first
       const clients = await clientsStore.list();
       const existing = phone ? clients.find((c) => c.phone === phone) : undefined;
       if (existing) {
@@ -53,13 +62,19 @@ export async function POST(req: Request, { params }: Ctx) {
       }
     }
 
+    const text = [parsed.data.clientName, subjectName, parsed.data.note]
+      .filter(Boolean)
+      .join(' · ');
     const lead: Lead = {
       id: generateId('lead'),
+      text: text || parsed.data.clientName,
+      contact: phone ?? parsed.data.clientName,
       clientName: parsed.data.clientName,
       phone,
-      subject: parsed.data.subject,
+      subject: subjectName,
       note: parsed.data.note,
       status: 'assigned',
+      autoAssigned: false,
       createdBy: guard.session.user.id,
       dispatcherId: guard.session.user.id,
       clientId,

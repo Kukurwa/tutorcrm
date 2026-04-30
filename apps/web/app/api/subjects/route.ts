@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import {
-  createSubjectSchema,
-  type Subject,
-  type SubjectWithChannels,
-} from '@tutorcrm/contracts';
+import { createSubjectSchema, type Subject, type SubjectWithChannels } from '@tutorcrm/contracts';
 
 import { requireApiRole, requireApiSession } from '@/lib/api/guards';
 import { generateId, nowIso } from '@/lib/api/id';
@@ -38,6 +34,8 @@ export async function POST(req: Request) {
   const subject: Subject = {
     id: generateId('subj'),
     name: parsed.data.name,
+    code: parsed.data.code,
+    contractCode: parsed.data.contractCode,
     active: parsed.data.active,
     createdAt: nowIso(),
     updatedAt: nowIso(),

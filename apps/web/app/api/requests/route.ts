@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 
   const parsed = parseSearchParams(new URL(req.url), listRequestsQuerySchema);
   if (!parsed.success) return parsed.response;
-  const { page, pageSize, q, stage, dispatcherId: filterDispatcher } = parsed.data;
+  const { page, pageSize, q, stage, dispatcherId: filterDispatcher, subjectId } = parsed.data;
 
   let rows = await requestsStore.list();
   if (guard.session.user.role === 'dispatcher') {
@@ -28,13 +28,15 @@ export async function GET(req: Request) {
     rows = rows.filter((r) => r.dispatcherId === filterDispatcher);
   }
   if (stage) rows = rows.filter((r) => r.stage === stage);
+  if (subjectId) rows = rows.filter((r) => r.subjectId === subjectId);
   if (q && q.trim()) {
     const n = q.toLowerCase();
     rows = rows.filter(
       (r) =>
         r.clientName.toLowerCase().includes(n) ||
         r.description.toLowerCase().includes(n) ||
-        (r.subjectName ?? '').toLowerCase().includes(n),
+        (r.subjectName ?? '').toLowerCase().includes(n) ||
+        (r.studentName ?? '').toLowerCase().includes(n),
     );
   }
   rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -76,13 +78,22 @@ export async function POST(request: Request) {
     subjectName: subject?.name ?? null,
     dealType: parsed.data.dealType,
     description: parsed.data.description,
-    budgetFrom: parsed.data.budgetFrom,
-    budgetTo: parsed.data.budgetTo,
+    studentName: parsed.data.studentName,
+    age: parsed.data.age,
+    grade: parsed.data.grade,
     schedule: parsed.data.schedule,
+    pricePerHour: parsed.data.pricePerHour,
+    requestPrice: parsed.data.requestPrice,
+    extraInfo: parsed.data.extraInfo,
+    budgetFrom: null,
+    budgetTo: null,
     stage: 'request_created',
-    dispatcherId: guard.session.user.role === 'dispatcher' ? guard.session.user.id : client.dispatcherId,
+    dispatcherId:
+      guard.session.user.role === 'dispatcher' ? guard.session.user.id : client.dispatcherId,
     publishedChannels: [],
     publishedAt: null,
+    republishedAt: null,
+    republishCount: 0,
     assignedTutorId: null,
     rejectionReasonId: null,
     createdAt: nowIso(),

@@ -1,16 +1,12 @@
 import { NextResponse } from 'next/server';
 
-import {
-  createLeadSchema,
-  type Client,
-  type Lead,
-} from '@tutorcrm/contracts';
+import { createLeadSchema, type Client, type Lead } from '@tutorcrm/contracts';
 
 import { requireApiRole, requireApiSession } from '@/lib/api/guards';
 import { generateId, nowIso } from '@/lib/api/id';
 import { parseJson } from '@/lib/api/response';
 import { normalizePhone } from '@/lib/phone';
-import { clientsStore, leadsStore } from '@/mocks/store';
+import { clientsStore, leadsStore, usersStore } from '@/mocks/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +24,40 @@ export async function GET() {
   return NextResponse.json({ items: rows });
 }
 
+// Простое round-robin авто-распределение между активными диспетчерами.
+async function pickDispatcher(): Promise<string | null> {
+  const users = await usersStore.list();
+  const dispatchers = users.filter((u) => u.role === 'dispatcher' && u.status === 'active');
+  if (dispatchers.length === 0 || !dispatchers[0]) return null;
+  const leads = await leadsStore.list();
+  const counts = new Map<string, number>();
+  for (const d of dispatchers) counts.set(d.id, 0);
+  for (const l of leads) {
+    if (l.dispatcherId && counts.has(l.dispatcherId)) {
+      counts.set(l.dispatcherId, (counts.get(l.dispatcherId) ?? 0) + 1);
+    }
+  }
+  let pick: string = dispatchers[0].id;
+  let min = counts.get(pick) ?? 0;
+  for (const [id, c] of counts) {
+    if (c < min) {
+      pick = id;
+      min = c;
+    }
+  }
+  return pick;
+}
+
+// Извлекаем из свободного текста имя — первая «человекообразная» строка/начало текста.
+function extractName(text: string): string {
+  const firstLine = (text.split('\n')[0] ?? '').trim();
+  return firstLine.length > 0 ? firstLine.slice(0, 80) : 'Без имени';
+}
+
+function looksLikePhone(value: string): boolean {
+  return /[\d+]/.test(value) && value.replace(/\D/g, '').length >= 9;
+}
+
 export async function POST(req: Request) {
   const guard = await requireApiRole('leadgen', 'admin');
   if ('response' in guard) return guard.response;
@@ -35,20 +65,21 @@ export async function POST(req: Request) {
   const parsed = await parseJson(req, createLeadSchema);
   if (!parsed.success) return parsed.response;
 
-  const phone = normalizePhone(parsed.data.phone);
+  const text = parsed.data.text.trim();
+  const contact = parsed.data.contact.trim();
+  const phone = looksLikePhone(contact) ? normalizePhone(contact) : null;
+  const clientName = extractName(text);
 
   const existingClients = await clientsStore.list();
-  const duplicate = phone
-    ? existingClients.find((c) => c.phone === phone)
-    : undefined;
+  const duplicate = phone ? existingClients.find((c) => c.phone === phone) : undefined;
 
   let clientId: string | null = duplicate?.id ?? null;
   if (!duplicate) {
     const client: Client = {
       id: generateId('cli'),
-      name: parsed.data.clientName,
+      name: clientName,
       phone,
-      note: parsed.data.note,
+      note: text,
       createdBy: guard.session.user.id,
       dispatcherId: null,
       createdAt: nowIso(),
@@ -58,15 +89,25 @@ export async function POST(req: Request) {
     clientId = client.id;
   }
 
+  let dispatcherId = parsed.data.dispatcherId;
+  let autoAssigned = false;
+  if (parsed.data.autoAssign) {
+    dispatcherId = await pickDispatcher();
+    autoAssigned = true;
+  }
+
   const lead: Lead = {
     id: generateId('lead'),
-    clientName: parsed.data.clientName,
+    text,
+    contact,
+    clientName,
     phone,
-    subject: parsed.data.subject,
-    note: parsed.data.note,
-    status: 'new',
+    subject: null,
+    note: text,
+    status: dispatcherId ? 'assigned' : 'new',
+    autoAssigned,
     createdBy: guard.session.user.id,
-    dispatcherId: null,
+    dispatcherId,
     clientId,
     createdAt: nowIso(),
     updatedAt: nowIso(),

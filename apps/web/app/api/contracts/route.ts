@@ -1,31 +1,36 @@
 import { NextResponse } from 'next/server';
 
-import {
-  createContractSchema,
-  type Contract,
-  type ContractEvent,
-} from '@tutorcrm/contracts';
+import { createContractSchema, type Contract, type ContractEvent } from '@tutorcrm/contracts';
 
 import { requireApiRole, requireApiSession } from '@/lib/api/guards';
 import { generateId, nowIso } from '@/lib/api/id';
 import { errorResponse, parseJson } from '@/lib/api/response';
+import { buildOrderCode } from '@/lib/order-code';
 import {
   contractEventsStore,
   contractsStore,
   requestsStore,
+  subjectsStore,
   tutorsStore,
 } from '@/mocks/store';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: Request) {
   const guard = await requireApiSession();
   if ('response' in guard) return guard.response;
+
+  const url = new URL(req.url);
+  const subjectId = url.searchParams.get('subjectId');
+  const dispatcherId = url.searchParams.get('dispatcherId');
 
   let rows = await contractsStore.list();
   if (guard.session.user.role === 'dispatcher') {
     rows = rows.filter((c) => c.dispatcherId === guard.session.user.id);
+  } else if (dispatcherId) {
+    rows = rows.filter((c) => c.dispatcherId === dispatcherId);
   }
+  if (subjectId) rows = rows.filter((c) => c.subjectId === subjectId);
   rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return NextResponse.json({ items: rows });
 }
@@ -41,17 +46,42 @@ export async function POST(req: Request) {
   if (!request) return errorResponse('NOT_FOUND', 'Request not found');
   const tutor = await tutorsStore.findById(parsed.data.tutorId);
   if (!tutor) return errorResponse('NOT_FOUND', 'Tutor not found');
+  const subject = request.subjectId ? await subjectsStore.findById(request.subjectId) : null;
+
+  const allContracts = await contractsStore.list();
+  const code = buildOrderCode({
+    subject,
+    tutorId: tutor.id,
+    isContract: tutor.termsKind === 'contract',
+    existing: allContracts,
+  });
 
   const contract: Contract = {
     id: generateId('con'),
+    code,
     requestId: request.id,
     clientId: request.clientId,
     clientName: request.clientName,
+    studentName: request.studentName,
+    parentName: null,
+    age: request.age,
+    level: null,
+    contactInfo: null,
     tutorId: tutor.id,
     tutorName: tutor.name,
+    tutorContact: tutor.telegramHandle ?? tutor.phone,
     subjectId: request.subjectId,
     subjectName: request.subjectName,
     hourlyRate: parsed.data.hourlyRate,
+    pricePerLesson: typeof request.pricePerHour === 'string' ? request.pricePerHour : null,
+    lessonsPerWeek: null,
+    requestPrice: typeof request.requestPrice === 'string' ? request.requestPrice : null,
+    trialAt: null,
+    paidAt: null,
+    amountReceived: null,
+    accountantVerified: false,
+    onFop: false,
+    comment: null,
     commissionRate: parsed.data.commissionRate,
     status: 'active',
     startedAt: nowIso(),

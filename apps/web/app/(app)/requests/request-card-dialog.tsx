@@ -36,6 +36,7 @@ import {
   toast,
 } from '@tutorcrm/ui';
 
+import { StagePill } from '@/components/stage-pill';
 import { api, ApiClientError } from '@/lib/api-client';
 import { formatFull } from '@/lib/format';
 import { TRANSITIONS } from '@/lib/funnel/state-machine';
@@ -56,7 +57,10 @@ const RESP_LABEL: Record<RequestResponseStatus, string> = {
   selected: 'Выбран',
 };
 
-const RESP_TONE: Record<RequestResponseStatus, 'info' | 'neutral' | 'warning' | 'success' | 'danger'> = {
+const RESP_TONE: Record<
+  RequestResponseStatus,
+  'info' | 'neutral' | 'warning' | 'success' | 'danger'
+> = {
   new: 'info',
   interested: 'warning',
   declined: 'danger',
@@ -84,7 +88,10 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
   if (!request) return null;
   const current = request;
 
-  async function transition(to: RequestStageKind, extras: { tutorId?: string; rejectionReasonId?: string } = {}) {
+  async function transition(
+    to: RequestStageKind,
+    extras: { tutorId?: string; rejectionReasonId?: string } = {},
+  ) {
     try {
       const res = await api.post<{ request: Req }>(`/api/requests/${current.id}/transition`, {
         to,
@@ -130,10 +137,9 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
 
   async function updateResponseStatus(id: string, status: RequestResponseStatus) {
     try {
-      const res = await api.patch<{ response: RequestResponse }>(
-        `/api/request-responses/${id}`,
-        { status },
-      );
+      const res = await api.patch<{ response: RequestResponse }>(`/api/request-responses/${id}`, {
+        status,
+      });
       setResponses((p) => p.map((r) => (r.id === id ? res.response : r)));
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
@@ -148,19 +154,12 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Заявка #{current.id.slice(-6)}</DialogTitle>
-          <DialogDescription>
-            {current.clientName} · {current.subjectName ?? 'без предмета'}
+          <DialogDescription className="flex flex-wrap items-center gap-2">
+            <span>
+              {current.clientName} · {current.subjectName ?? 'без предмета'}
+            </span>
             {currentStage ? (
-              <span
-                className="ml-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs"
-                style={{ backgroundColor: `${currentStage.color}26`, color: currentStage.color }}
-              >
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: currentStage.color }}
-                />
-                {currentStage.name}
-              </span>
+              <StagePill name={currentStage.name} color={currentStage.color} />
             ) : null}
           </DialogDescription>
         </DialogHeader>
@@ -173,24 +172,44 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
             <TabsTrigger value="transitions">Переходы</TabsTrigger>
           </TabsList>
           <TabsContent value="info" className="space-y-3">
-            <FormField label="Описание">
-              <Textarea rows={4} defaultValue={current.description} readOnly />
-            </FormField>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Бюджет">
-                <div className="text-sm">
-                  {current.budgetFrom ?? '—'} – {current.budgetTo ?? '—'}
-                </div>
+            <div className="grid grid-cols-3 gap-3">
+              <FormField label="Имя ученика">
+                <div className="text-sm">{current.studentName ?? '—'}</div>
               </FormField>
+              <FormField label="Возраст">
+                <div className="text-sm">{current.age ?? '—'}</div>
+              </FormField>
+              <FormField label="Класс">
+                <div className="text-sm">{current.grade ?? '—'}</div>
+              </FormField>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Цена в час">
+                <div className="text-sm">{current.pricePerHour ?? '—'}</div>
+              </FormField>
+              <FormField label="Цена заявки">
+                <div className="text-sm">{current.requestPrice ?? '—'}</div>
+              </FormField>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <FormField label="Тип">
                 <div className="text-sm">
                   {current.dealType === 'contract' ? 'Контрактный' : 'Разовый'}
                 </div>
               </FormField>
+              <FormField label="Расписание">
+                <div className="text-sm">{current.schedule ?? 'не указано'}</div>
+              </FormField>
             </div>
-            <FormField label="Расписание">
-              <div className="text-sm">{current.schedule ?? 'не указано'}</div>
+            <FormField label="Доп. информация">
+              <Textarea rows={4} defaultValue={current.extraInfo ?? current.description} readOnly />
             </FormField>
+            {current.republishCount > 0 ? (
+              <div className="text-muted-foreground text-xs">
+                Перевыставлено: {current.republishCount} раз
+                {current.republishedAt ? ` · последний — ${formatFull(current.republishedAt)}` : ''}
+              </div>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="post">
@@ -199,7 +218,7 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
 
           <TabsContent value="responses" className="space-y-3">
             <div className="flex justify-between">
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 В реальной системе отклики парсятся автоматически. Для демо — добавляйте вручную.
               </div>
               <Button size="sm" onClick={() => setAddingResponse(true)}>
@@ -207,7 +226,7 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
               </Button>
             </div>
             {responses.length === 0 ? (
-              <p className="rounded border border-dashed p-6 text-center text-sm text-muted-foreground">
+              <p className="text-muted-foreground rounded border border-dashed p-6 text-center text-sm">
                 Откликов пока нет
               </p>
             ) : (
@@ -217,15 +236,15 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="font-medium">{r.tutorName}</div>
-                        {r.note ? (
-                          <p className="text-sm text-muted-foreground">{r.note}</p>
-                        ) : null}
+                        {r.note ? <p className="text-muted-foreground text-sm">{r.note}</p> : null}
                       </div>
                       <div className="flex items-center gap-2">
                         <StatusBadge tone={RESP_TONE[r.status]} label={RESP_LABEL[r.status]} />
                         <Select
                           value={r.status}
-                          onValueChange={(v) => updateResponseStatus(r.id, v as RequestResponseStatus)}
+                          onValueChange={(v) =>
+                            updateResponseStatus(r.id, v as RequestResponseStatus)
+                          }
                         >
                           <SelectTrigger className="h-8 w-40">
                             <SelectValue />
@@ -252,7 +271,7 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
           </TabsContent>
 
           <TabsContent value="transitions" className="space-y-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Разрешённые переходы из текущей стадии. State machine не даст сделать запрещённый шаг.
             </p>
             {availableTransitions.length === 0 ? (
@@ -280,7 +299,9 @@ export function RequestCardDialog({ request, onClose, onUpdate, stages, reasons,
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Закрыть</Button>
+          <Button variant="outline" onClick={onClose}>
+            Закрыть
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -306,20 +327,8 @@ function TransitionRow({
   const [tutorId, setTutorId] = useState<string>(tutors[0]?.id ?? '');
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded border p-3">
-      <span
-        className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs"
-        style={{
-          backgroundColor: stage ? `${stage.color}26` : undefined,
-          color: stage?.color,
-        }}
-      >
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: stage?.color }}
-        />
-        {stage?.name ?? to}
-      </span>
+    <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
+      <StagePill name={stage?.name ?? to} color={stage?.color} />
       {needsReason ? (
         <Select value={reasonId} onValueChange={setReasonId}>
           <SelectTrigger className="h-9 w-56">
@@ -383,14 +392,16 @@ function PublishTab({
     <div className="grid gap-4 md:grid-cols-2">
       <div>
         <Label>Превью поста в канал</Label>
-        <pre className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-sm font-mono">{post}</pre>
+        <pre className="bg-muted/30 mt-1 whitespace-pre-wrap rounded-md border p-3 font-mono text-sm">
+          {post}
+        </pre>
       </div>
       <div className="space-y-3">
         <FormField label="Каналы (по одному на строку)">
           <Textarea rows={6} value={channels} onChange={(e) => setChannels(e.target.value)} />
         </FormField>
         {request.publishedChannels.length > 0 ? (
-          <div className="text-xs text-muted-foreground">
+          <div className="text-muted-foreground text-xs">
             Уже опубликовано в {request.publishedChannels.length} каналов ·{' '}
             {request.publishedAt ? formatFull(request.publishedAt) : ''}
           </div>
@@ -414,18 +425,21 @@ function PublishTab({
 
 function renderPost(r: Req): string {
   const lines = [
-    '🔔 ЗАЯВКА',
+    'ЗАЯВКА',
     '',
     `Предмет: ${r.subjectName ?? 'уточним'}`,
     `Тип: ${r.dealType === 'contract' ? 'контракт' : 'разовый'}`,
-    `Бюджет: ${r.budgetFrom ?? '—'}–${r.budgetTo ?? '—'} грн/ч`,
-    `Расписание: ${r.schedule ?? 'гибкое'}`,
+    r.studentName
+      ? `Ученик: ${r.studentName}${r.age ? `, ${r.age}` : ''}${r.grade ? `, ${r.grade} кл.` : ''}`
+      : null,
+    r.schedule ? `График: ${r.schedule}` : null,
+    r.pricePerHour ? `Цена/час: ${r.pricePerHour}` : null,
+    r.requestPrice ? `Цена заявки: ${r.requestPrice}` : null,
+    r.extraInfo ? '' : null,
+    r.extraInfo ? `Детали: ${r.extraInfo}` : null,
     '',
-    'Детали:',
-    r.description,
-    '',
-    '📝 Откликайтесь в личку @dispatcher_bot',
-  ];
+    'Откликайтесь в личку @dispatcher_bot',
+  ].filter((l): l is string => l !== null);
   return lines.join('\n');
 }
 
@@ -474,7 +488,9 @@ function AddResponseDialog({
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
           <Button
             disabled={!tutorId}
             onClick={() =>
@@ -491,4 +507,3 @@ function AddResponseDialog({
     </Dialog>
   );
 }
-

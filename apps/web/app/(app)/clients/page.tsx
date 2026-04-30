@@ -1,7 +1,13 @@
 import { PageHeader } from '@tutorcrm/ui';
 
 import { requireRole } from '@/lib/auth/session';
-import { clientContactsStore, clientsStore, usersStore } from '@/mocks/store';
+import {
+  clientContactsStore,
+  clientsStore,
+  contractsStore,
+  subjectsStore,
+  usersStore,
+} from '@/mocks/store';
 
 import { ClientsList } from './clients-list';
 
@@ -10,33 +16,41 @@ export const metadata = { title: 'Клиенты — TutorCRM' };
 export default async function ClientsPage() {
   const session = await requireRole('admin', 'dispatcher');
 
-  const [clients, contacts, users] = await Promise.all([
+  const [clients, contacts, users, contracts, subjects] = await Promise.all([
     clientsStore.list(),
     clientContactsStore.list(),
     usersStore.list(),
+    contractsStore.list(),
+    subjectsStore.list(),
   ]);
 
-  let rows = clients;
+  let visibleClients = clients;
+  let visibleContracts = contracts;
   if (session.user.role === 'dispatcher') {
-    rows = rows.filter((c) => c.dispatcherId === session.user.id);
+    visibleClients = visibleClients.filter((c) => c.dispatcherId === session.user.id);
+    visibleContracts = visibleContracts.filter((c) => c.dispatcherId === session.user.id);
   }
-  rows.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
-  const dispatchers = users.filter((u) => u.role === 'dispatcher');
+  const dispatchers = users
+    .filter((u) => u.role === 'dispatcher')
+    .map((d) => ({ id: d.id, name: d.name }));
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Клиенты"
-        description="Для dispatcher — только свои клиенты. Admin видит всех."
+        description="Excel-таблица заказов клиентов с разбивкой по предметам. Каждая строка — отдельный заказ."
       />
       <ClientsList
-        initial={rows.map((c) => ({
+        clients={visibleClients.map((c) => ({
           ...c,
           contacts: contacts.filter((x) => x.clientId === c.id),
         }))}
-        dispatchers={dispatchers.map((d) => ({ id: d.id, name: d.name }))}
+        contracts={visibleContracts}
+        subjects={subjects.filter((s) => s.active)}
+        dispatchers={dispatchers}
         role={session.user.role}
+        canFilterByDispatcher={session.user.role === 'admin'}
       />
     </div>
   );

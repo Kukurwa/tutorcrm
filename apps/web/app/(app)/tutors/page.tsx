@@ -14,7 +14,7 @@ import { TutorsList, type TutorWithStats } from './tutors-list';
 export const metadata = { title: 'Репетиторы — TutorCRM' };
 
 export default async function TutorsPage() {
-  await requireRole('admin', 'dispatcher');
+  const session = await requireRole('admin', 'dispatcher');
 
   const [tutors, subjects, contracts, trials, requests] = await Promise.all([
     tutorsStore.list(),
@@ -27,30 +27,26 @@ export default async function TutorsPage() {
   const rows: TutorWithStats[] = tutors
     .map((t) => {
       const contractsByTutor = contracts.filter((c) => c.tutorId === t.id);
-      const activeContracts = contractsByTutor.filter((c) => c.status === 'active');
-      const closedContracts = contractsByTutor.filter(
-        (c) => c.status === 'closed_won' || c.status === 'closed_lost',
-      );
+      const closedWon = contractsByTutor.filter((c) => c.status === 'closed_won').length;
+      const closedLost = contractsByTutor.filter((c) => c.status === 'closed_lost').length;
+      const activeContracts = contractsByTutor.filter((c) => c.status === 'active').length;
+      const requestsAssigned = requests.filter((r) => r.assignedTutorId === t.id);
       const trialsByTutor = trials.filter((tr) => tr.tutorId === t.id);
-      const successTrials = trialsByTutor.filter((tr) => tr.result === 'success');
-      const oneTimeGiven = requests.filter(
-        (r) => r.assignedTutorId === t.id && r.dealType === 'one_time',
-      );
-      const successRate =
-        trialsByTutor.length > 0
-          ? Math.round((successTrials.length / trialsByTutor.length) * 100)
-          : null;
+
+      // Эффективность = % выигранных контрактов от назначений
+      const totalAssignments = requestsAssigned.length || contractsByTutor.length;
+      const effectivenessRate = totalAssignments > 0 ? closedWon / totalAssignments : null;
 
       return {
         ...t,
         stats: {
-          successTrials: successTrials.length,
-          totalTrials: trialsByTutor.length,
-          successRate,
-          activeContracts: activeContracts.length,
+          activeContracts,
           totalContracts: contractsByTutor.length,
-          closedContracts: closedContracts.length,
-          oneTimeGiven: oneTimeGiven.length,
+          closedWon,
+          closedLost,
+          totalAssignments,
+          effectivenessRate,
+          totalTrials: trialsByTutor.length,
         },
       };
     })
@@ -60,9 +56,16 @@ export default async function TutorsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Репетиторы"
-        description="База репетиторов и их эффективность: пробные, активные контракты, разовые заказы."
+        description="База репетиторов: контрактные и обычные условия, разделение по предметам, эффективность."
       />
-      <TutorsList initial={rows} subjects={subjects.map((s) => ({ id: s.id, name: s.name }))} />
+      <TutorsList
+        initial={rows}
+        subjects={subjects
+          .filter((s) => s.active)
+          .map((s) => ({ id: s.id, name: s.name, code: s.code }))}
+        currentUserId={session.user.id}
+        requests={requests}
+      />
     </div>
   );
 }

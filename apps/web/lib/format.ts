@@ -1,6 +1,16 @@
 const MONTHS_RU = [
-  'янв', 'фев', 'мар', 'апр', 'май', 'июн',
-  'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+  'янв',
+  'фев',
+  'мар',
+  'апр',
+  'май',
+  'июн',
+  'июл',
+  'авг',
+  'сен',
+  'окт',
+  'ноя',
+  'дек',
 ];
 
 function pad(n: number): string {
@@ -28,6 +38,12 @@ export function formatRelativeTime(iso: string): string {
 export function formatFull(iso: string): string {
   const d = new Date(iso);
   return `${pad(d.getDate())} ${MONTHS_RU[d.getMonth()]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Короткий формат: «16 апр» — для плотных таблиц.
+export function formatShort(iso: string): string {
+  const d = new Date(iso);
+  return `${pad(d.getDate())} ${MONTHS_RU[d.getMonth()]}`;
 }
 
 const CURRENCY_SYMBOLS: Record<'UAH' | 'USD' | 'EUR', string> = {

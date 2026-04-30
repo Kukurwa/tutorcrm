@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 
-import { requireApiSession } from '@/lib/api/guards';
-import { errorResponse } from '@/lib/api/response';
+import { updateDialogSchema, type Dialog } from '@tutorcrm/contracts';
+
+import { requireApiRole, requireApiSession } from '@/lib/api/guards';
+import { nowIso } from '@/lib/api/id';
+import { errorResponse, parseJson } from '@/lib/api/response';
 import { dialogsStore, MockStoreError, messagesStore } from '@/mocks/store';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +31,6 @@ export async function GET(_req: Request, { params }: Ctx) {
       .filter((m) => m.dialogId === dialog.id)
       .sort((a, b) => a.sentAt.localeCompare(b.sentAt));
 
-    // Mark as read on open
     if (dialog.unread > 0) {
       await dialogsStore.upsert({ ...dialog, unread: 0 });
     }
@@ -37,6 +39,37 @@ export async function GET(_req: Request, { params }: Ctx) {
     }
 
     return NextResponse.json({ dialog: { ...dialog, unread: 0 }, messages: msgs });
+  } catch (err) {
+    if (err instanceof MockStoreError && err.code === 'NOT_FOUND') {
+      return errorResponse('NOT_FOUND', 'Dialog not found');
+    }
+    throw err;
+  }
+}
+
+export async function PATCH(req: Request, { params }: Ctx) {
+  const guard = await requireApiRole('admin', 'dispatcher');
+  if ('response' in guard) return guard.response;
+
+  const parsed = await parseJson(req, updateDialogSchema);
+  if (!parsed.success) return parsed.response;
+
+  try {
+    const current = await dialogsStore.requireById(params.id);
+    if (
+      guard.session.user.role === 'dispatcher' &&
+      current.dispatcherId &&
+      current.dispatcherId !== guard.session.user.id
+    ) {
+      return errorResponse('FORBIDDEN', 'Not your dialog');
+    }
+    const next: Dialog = {
+      ...current,
+      ...parsed.data,
+      updatedAt: nowIso(),
+    };
+    await dialogsStore.upsert(next);
+    return NextResponse.json({ dialog: next });
   } catch (err) {
     if (err instanceof MockStoreError && err.code === 'NOT_FOUND') {
       return errorResponse('NOT_FOUND', 'Dialog not found');

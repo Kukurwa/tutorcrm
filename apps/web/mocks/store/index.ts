@@ -9,12 +9,14 @@ export { getSystemSettings, updateSystemSettings } from './system-settings';
 export { clientsStore, clientContactsStore } from './clients';
 export { leadsStore } from './leads';
 export { dialogsStore, messagesStore } from './inbox';
+export { inboxFoldersStore } from './inbox-folders';
 export { tutorsStore } from './tutors';
 export { requestsStore, requestResponsesStore, trialsStore } from './requests';
 export {
   contractsStore,
   contractEventsStore,
   weeklyLessonCountsStore,
+  lessonsStore,
   oneTimePaymentsStore,
 } from './contracts';
 export { tasksStore, calendarEventsStore } from './tasks';

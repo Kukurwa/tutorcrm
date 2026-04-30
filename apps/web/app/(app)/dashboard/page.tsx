@@ -1,56 +1,30 @@
-import Link from 'next/link';
-
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  PageHeader,
-  RoleBadge,
-} from '@tutorcrm/ui';
+import { PageHeader, RoleBadge } from '@tutorcrm/ui';
 
 import { requireSession } from '@/lib/auth/session';
 import { leadsStore, subjectsStore, usersStore } from '@/mocks/store';
 
 import { DashboardView } from './dashboard-view';
+import { LeadgenView } from './leadgen-view';
 
 export default async function DashboardPage() {
   const session = await requireSession();
 
   if (session.user.role === 'leadgen') {
-    const leads = await leadsStore.list();
-    const mine = leads.filter((l) => l.createdBy === session.user.id).length;
+    const [leads, users] = await Promise.all([leadsStore.list(), usersStore.list()]);
+    const myLeads = leads
+      .filter((l) => l.createdBy === session.user.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const dispatchers = users
+      .filter((u) => u.role === 'dispatcher' && u.status === 'active')
+      .map((u) => ({ id: u.id, name: u.name }));
     return (
       <div className="space-y-6">
         <PageHeader
           title={`Здравствуйте, ${session.user.name.split(' ')[0] ?? session.user.name}`}
-          description="Сводка по вашим лидам."
+          description="Создайте лид: только текст и контакт. Диспетчер — на ваш выбор или авто."
           actions={<RoleBadge role={session.user.role} />}
         />
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Мои лиды</CardTitle>
-              <CardDescription>Всего создано.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-semibold">{mine}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Воронка</CardTitle>
-              <CardDescription>Ваши лиды и заявки.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button asChild size="sm">
-                <Link href="/funnel">Открыть</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+        <LeadgenView initialLeads={myLeads} dispatchers={dispatchers} />
       </div>
     );
   }

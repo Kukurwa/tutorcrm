@@ -1,9 +1,16 @@
 'use client';
 
 import { ArrowLeft, Info } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { Dialog, Message } from '@tutorcrm/contracts';
+import type {
+  Dialog,
+  FunnelStage,
+  InboxFolder,
+  Message,
+  Script,
+  Subject,
+} from '@tutorcrm/contracts';
 import { Button, cn, toast } from '@tutorcrm/ui';
 
 import { api, ApiClientError } from '@/lib/api-client';
@@ -15,13 +22,34 @@ import { DialogThread } from './dialog-thread';
 
 type MobilePane = 'list' | 'thread' | 'context';
 
-export function InboxWorkspace() {
+export type InboxFilters = {
+  channel: string | null;
+  stage: string | null;
+  partyKind: string | null;
+  folderId: string | null;
+};
+
+interface Props {
+  subjects: Subject[];
+  stages: FunnelStage[];
+  scripts: Script[];
+  initialFolders: InboxFolder[];
+}
+
+export function InboxWorkspace({ subjects, stages, scripts, initialFolders }: Props) {
   const [dialogs, setDialogs] = useState<Dialog[]>([]);
+  const [folders, setFolders] = useState<InboxFolder[]>(initialFolders);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [mobilePane, setMobilePane] = useState<MobilePane>('list');
+  const [filters, setFilters] = useState<InboxFilters>({
+    channel: null,
+    stage: null,
+    partyKind: null,
+    folderId: null,
+  });
 
   const fetchDialogs = useCallback(async () => {
     try {
@@ -63,6 +91,21 @@ export function InboxWorkspace() {
 
   const activeDialog = dialogs.find((d) => d.id === activeId) ?? null;
 
+  // Применение фильтров: партийная папка («Репетиторы», «Рабочие группы») идёт через partyKind.
+  const filteredDialogs = useMemo(() => {
+    return dialogs.filter((d) => {
+      if (filters.channel && d.channel !== filters.channel) return false;
+      if (filters.stage && d.stage !== filters.stage) return false;
+      if (filters.partyKind && d.partyKind !== filters.partyKind) return false;
+      if (filters.folderId && d.folderId !== filters.folderId) return false;
+      // Если ни одна папка не выбрана — по умолчанию скрываем системные папки tutor/work_group
+      if (!filters.partyKind && !filters.folderId && d.partyKind !== 'client') {
+        return false;
+      }
+      return true;
+    });
+  }, [dialogs, filters]);
+
   async function handleSend(text: string) {
     if (!activeId) return;
     try {
@@ -97,7 +140,10 @@ export function InboxWorkspace() {
     clientId: string | null;
   }) {
     try {
-      const res = await api.post<{ dialog: Dialog; message: Message }>('/api/dialogs/initiate', data);
+      const res = await api.post<{ dialog: Dialog; message: Message }>(
+        '/api/dialogs/initiate',
+        data,
+      );
       setDialogs((p) => [res.dialog, ...p]);
       setActiveId(res.dialog.id);
       setMessages([res.message]);
@@ -107,24 +153,50 @@ export function InboxWorkspace() {
     }
   }
 
+  async function handleCreateFolder(name: string) {
+    try {
+      const res = await api.post<{ folder: InboxFolder }>('/api/inbox-folders', { name });
+      setFolders((p) => [...p, res.folder]);
+      toast.success('Папка создана');
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
+    }
+  }
+
+  async function handleDeleteFolder(id: string) {
+    try {
+      await api.delete(`/api/inbox-folders/${id}`);
+      setFolders((p) => p.filter((f) => f.id !== id));
+      if (filters.folderId === id) {
+        setFilters((f) => ({ ...f, folderId: null }));
+      }
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
+    }
+  }
+
+  async function handleUpdateDialog(next: Dialog) {
+    setDialogs((p) => p.map((d) => (d.id === next.id ? next : d)));
+  }
+
   function handleSelect(id: string) {
     setActiveId(id);
     setMobilePane('thread');
   }
 
   return (
-    <div className="flex h-full bg-background md:grid md:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_360px]">
-      {/* Список диалогов: всегда виден от md+; на мобильном только когда pane=list */}
-      <div
-        className={cn(
-          'w-full md:block',
-          mobilePane === 'list' ? 'block' : 'hidden',
-        )}
-      >
+    <div className="bg-background flex h-full md:grid md:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)_360px]">
+      <div className={cn('w-full md:block', mobilePane === 'list' ? 'block' : 'hidden')}>
         <DialogList
-          items={dialogs}
+          items={filteredDialogs}
           loading={loadingList}
           activeId={activeId}
+          stages={stages}
+          folders={folders}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onCreateFolder={handleCreateFolder}
+          onDeleteFolder={handleDeleteFolder}
           onSelect={handleSelect}
           onInitiate={(data) => {
             handleInitiate(data);
@@ -133,15 +205,8 @@ export function InboxWorkspace() {
         />
       </div>
 
-      {/* Чат: виден от md; на мобильном — pane=thread или context */}
-      <div
-        className={cn(
-          'w-full flex-col md:flex',
-          mobilePane === 'list' ? 'hidden' : 'flex',
-        )}
-      >
-        {/* Mobile header row: назад + info */}
-        <div className="flex items-center justify-between gap-2 border-b bg-card px-3 py-2 md:hidden">
+      <div className={cn('w-full flex-col md:flex', mobilePane === 'list' ? 'hidden' : 'flex')}>
+        <div className="bg-card flex items-center justify-between gap-2 border-b px-3 py-2 md:hidden">
           <Button
             variant="ghost"
             size="sm"
@@ -154,9 +219,7 @@ export function InboxWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() =>
-                setMobilePane(mobilePane === 'context' ? 'thread' : 'context')
-              }
+              onClick={() => setMobilePane(mobilePane === 'context' ? 'thread' : 'context')}
               className="h-8 px-2"
             >
               <Info className="h-4 w-4" />
@@ -165,34 +228,35 @@ export function InboxWorkspace() {
           ) : null}
         </div>
 
-        <div className={cn('min-h-0 flex-1', mobilePane === 'context' ? 'hidden md:block' : 'block')}>
+        <div
+          className={cn('min-h-0 flex-1', mobilePane === 'context' ? 'hidden md:block' : 'block')}
+        >
           <DialogThread
             dialog={activeDialog}
             messages={messages}
             loading={loadingThread}
+            scripts={scripts}
             onSend={handleSend}
             onSimulateIncoming={handleSimulateIncoming}
           />
         </div>
 
-        {/* Контекст-панель встроена на мобильном (когда pane=context), иначе отдельная колонка xl+ */}
         <div className={cn('md:hidden', mobilePane === 'context' ? 'block' : 'hidden')}>
           <ContextPanel
             dialog={activeDialog}
-            onDialogUpdated={(next) =>
-              setDialogs((p) => p.map((d) => (d.id === next.id ? next : d)))
-            }
+            subjects={subjects}
+            stages={stages}
+            onDialogUpdated={handleUpdateDialog}
           />
         </div>
       </div>
 
-      {/* Отдельная колонка контекста только на xl+ */}
       <div className="hidden xl:block">
         <ContextPanel
           dialog={activeDialog}
-          onDialogUpdated={(next) =>
-            setDialogs((p) => p.map((d) => (d.id === next.id ? next : d)))
-          }
+          subjects={subjects}
+          stages={stages}
+          onDialogUpdated={handleUpdateDialog}
         />
       </div>
     </div>

@@ -2,7 +2,14 @@
 
 import { useState } from 'react';
 
-import type { Dialog, Lead } from '@tutorcrm/contracts';
+import type {
+  Dialog,
+  DialogStage,
+  FunnelStage,
+  Lead,
+  Request as Req,
+  Subject,
+} from '@tutorcrm/contracts';
 import {
   Button,
   Card,
@@ -18,6 +25,11 @@ import {
   EmptyState,
   FormField,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   StatusBadge,
   Textarea,
   toast,
@@ -27,10 +39,12 @@ import { api, ApiClientError } from '@/lib/api-client';
 
 interface Props {
   dialog: Dialog | null;
+  subjects: Subject[];
+  stages: FunnelStage[];
   onDialogUpdated: (d: Dialog) => void;
 }
 
-const STAGE_LABEL: Record<Dialog['stage'], string> = {
+const STAGE_LABEL: Record<DialogStage, string> = {
   new_dialog: 'Новый диалог',
   lead_created: 'Лид создан',
   request_created: 'Заявка сформирована',
@@ -44,13 +58,17 @@ const STAGE_LABEL: Record<Dialog['stage'], string> = {
   closed_lost: 'Закрыт (отказ)',
 };
 
-export function ContextPanel({ dialog, onDialogUpdated }: Props) {
+export function ContextPanel({ dialog, subjects, stages, onDialogUpdated }: Props) {
   const [leadOpen, setLeadOpen] = useState(false);
+  const [requestOpen, setRequestOpen] = useState(false);
 
   if (!dialog) {
     return (
-      <aside className="h-full border-l bg-card p-6">
-        <EmptyState title="Контекст" description="Выберите диалог, чтобы увидеть детали и действия." />
+      <aside className="bg-card h-full border-l p-6">
+        <EmptyState
+          title="Контекст"
+          description="Выберите диалог, чтобы увидеть детали и действия."
+        />
       </aside>
     );
   }
@@ -58,7 +76,7 @@ export function ContextPanel({ dialog, onDialogUpdated }: Props) {
   async function createLead(data: {
     clientName: string;
     phone: string | null;
-    subject: string | null;
+    subjectId: string | null;
     note: string | null;
   }) {
     if (!dialog) return;
@@ -75,8 +93,36 @@ export function ContextPanel({ dialog, onDialogUpdated }: Props) {
     }
   }
 
+  async function createRequest(data: CreateRequestPayload) {
+    if (!dialog) return;
+    try {
+      const res = await api.post<{ request: Req; dialog: Dialog }>(
+        `/api/dialogs/${dialog.id}/create-request`,
+        data,
+      );
+      onDialogUpdated(res.dialog);
+      setRequestOpen(false);
+      toast.success('Заявка создана');
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
+    }
+  }
+
+  async function changeStage(next: DialogStage) {
+    if (!dialog || dialog.stage === next) return;
+    try {
+      const res = await api.patch<{ dialog: Dialog }>(`/api/dialogs/${dialog.id}`, {
+        stage: next,
+      });
+      onDialogUpdated(res.dialog);
+      toast.success('Стадия обновлена');
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
+    }
+  }
+
   return (
-    <aside className="flex h-full flex-col gap-3 overflow-y-auto border-l bg-card p-4">
+    <aside className="bg-card flex h-full flex-col gap-3 overflow-y-auto border-l p-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">{dialog.clientName}</CardTitle>
@@ -88,8 +134,30 @@ export function ContextPanel({ dialog, onDialogUpdated }: Props) {
         <CardContent className="space-y-2 text-sm">
           <Row label="Client ID" value={dialog.clientId ?? '—'} />
           <Row label="Lead ID" value={dialog.leadId ?? '—'} />
+          <Row label="Request ID" value={dialog.requestId ?? '—'} />
           <Row label="Dispatcher" value={dialog.dispatcherId ?? '—'} />
           <Row label="External ID" value={dialog.externalId} />
+        </CardContent>
+      </Card>
+
+      {/* Смена стадии прямо в переписке */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Стадия воронки</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select value={dialog.stage} onValueChange={(v) => changeStage(v as DialogStage)}>
+            <SelectTrigger className="h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {stages.map((s) => (
+                <SelectItem key={s.kind} value={s.kind}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -99,33 +167,28 @@ export function ContextPanel({ dialog, onDialogUpdated }: Props) {
         </CardHeader>
         <CardContent className="space-y-2">
           {dialog.stage === 'new_dialog' ? (
-            <>
-              <Button className="w-full" onClick={() => setLeadOpen(true)}>
-                Создать лид из диалога
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Следующий шаг: распознать запрос и создать лид с контактами клиента.
-              </p>
-            </>
-          ) : dialog.stage === 'lead_created' ? (
-            <>
-              <Button className="w-full" disabled>
-                Сформировать заявку
-              </Button>
-              <p className="text-xs text-muted-foreground">Заявки появятся на этапе FE-5.</p>
-            </>
-          ) : dialog.stage === 'request_created' ? (
-            <>
-              <Button className="w-full" disabled>
-                Опубликовать в канал
-              </Button>
-              <p className="text-xs text-muted-foreground">Публикация — FE-5.</p>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Для текущего этапа действия ещё не реализованы (будут на FE-5 / FE-6).
+            <Button className="w-full" onClick={() => setLeadOpen(true)}>
+              Создать лид из диалога
+            </Button>
+          ) : null}
+          {(dialog.stage === 'lead_created' ||
+            dialog.stage === 'new_dialog' ||
+            dialog.stage === 'request_created') &&
+          dialog.clientId ? (
+            <Button
+              className="w-full"
+              variant={dialog.stage === 'request_created' ? 'outline' : 'default'}
+              onClick={() => setRequestOpen(true)}
+            >
+              {dialog.stage === 'request_created' ? 'Пересоздать заявку' : 'Сформировать заявку'}
+            </Button>
+          ) : null}
+          {dialog.partyKind !== 'client' ? (
+            <p className="text-muted-foreground text-xs">
+              Это {dialog.partyKind === 'tutor' ? 'диалог с репетитором' : 'рабочая группа'} —
+              действия по клиентской воронке недоступны.
             </p>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
@@ -134,6 +197,14 @@ export function ContextPanel({ dialog, onDialogUpdated }: Props) {
         onClose={() => setLeadOpen(false)}
         onCreate={createLead}
         defaultName={dialog.clientName}
+        subjects={subjects}
+      />
+      <CreateRequestFromDialogModal
+        open={requestOpen}
+        onClose={() => setRequestOpen(false)}
+        onCreate={createRequest}
+        defaultName={dialog.clientName}
+        subjects={subjects}
       />
     </aside>
   );
@@ -142,8 +213,8 @@ export function ContextPanel({ dialog, onDialogUpdated }: Props) {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="text-right font-mono text-xs break-all">{value}</span>
+      <span className="text-muted-foreground text-xs uppercase tracking-wide">{label}</span>
+      <span className="break-all text-right font-mono text-xs">{value}</span>
     </div>
   );
 }
@@ -153,26 +224,28 @@ function CreateLeadFromDialogModal({
   onClose,
   onCreate,
   defaultName,
+  subjects,
 }: {
   open: boolean;
   onClose: () => void;
   onCreate: (d: {
     clientName: string;
     phone: string | null;
-    subject: string | null;
+    subjectId: string | null;
     note: string | null;
   }) => void;
   defaultName: string;
+  subjects: Subject[];
 }) {
   const [name, setName] = useState(defaultName);
   const [phone, setPhone] = useState('');
-  const [subject, setSubject] = useState('');
+  const [subjectId, setSubjectId] = useState<string>('');
   const [note, setNote] = useState('');
 
   function reset() {
     setName(defaultName);
     setPhone('');
-    setSubject('');
+    setSubjectId('');
     setNote('');
   }
 
@@ -201,22 +274,198 @@ function CreateLeadFromDialogModal({
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </FormField>
           <FormField label="Предмет">
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <Select
+              value={subjectId === '' ? '__none' : subjectId}
+              onValueChange={(v) => setSubjectId(v === '__none' ? '' : v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Не выбрано" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">Не выбрано</SelectItem>
+                {subjects.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
           <FormField label="Заметка">
             <Textarea value={note} onChange={(e) => setNote(e.target.value)} />
           </FormField>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Отмена</Button>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
           <Button
             disabled={!name.trim()}
             onClick={() =>
               onCreate({
                 clientName: name.trim(),
                 phone: phone.trim() || null,
-                subject: subject.trim() || null,
+                subjectId: subjectId === '' ? null : subjectId,
                 note: note.trim() || null,
+              })
+            }
+          >
+            Создать
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </DialogRoot>
+  );
+}
+
+type CreateRequestPayload = {
+  subjectId: string | null;
+  dealType: 'contract' | 'one_time';
+  studentName: string | null;
+  age: number | null;
+  grade: string | null;
+  schedule: string | null;
+  pricePerHour: string | null;
+  requestPrice: string | null;
+  extraInfo: string | null;
+  description: string;
+};
+
+function CreateRequestFromDialogModal({
+  open,
+  onClose,
+  onCreate,
+  defaultName,
+  subjects,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (d: CreateRequestPayload) => void;
+  defaultName: string;
+  subjects: Subject[];
+}) {
+  const [subjectId, setSubjectId] = useState<string>('');
+  const [dealType, setDealType] = useState<'contract' | 'one_time'>('contract');
+  const [studentName, setStudentName] = useState(defaultName);
+  const [age, setAge] = useState('');
+  const [grade, setGrade] = useState('');
+  const [schedule, setSchedule] = useState('');
+  const [pricePerHour, setPricePerHour] = useState('');
+  const [requestPrice, setRequestPrice] = useState('');
+  const [extraInfo, setExtraInfo] = useState('');
+
+  function reset() {
+    setSubjectId('');
+    setDealType('contract');
+    setStudentName(defaultName);
+    setAge('');
+    setGrade('');
+    setSchedule('');
+    setPricePerHour('');
+    setRequestPrice('');
+    setExtraInfo('');
+  }
+
+  return (
+    <DialogRoot
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          onClose();
+          reset();
+        }
+      }}
+    >
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Сформировать заявку из диалога</DialogTitle>
+          <DialogDescription>
+            Все поля необязательные. В ценах можно указать «Договірна».
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Предмет">
+              <Select
+                value={subjectId === '' ? '__none' : subjectId}
+                onValueChange={(v) => setSubjectId(v === '__none' ? '' : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Не выбрано" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">Не выбрано</SelectItem>
+                  {subjects.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Тип сделки">
+              <Select
+                value={dealType}
+                onValueChange={(v) => setDealType(v as 'contract' | 'one_time')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contract">Контрактный</SelectItem>
+                  <SelectItem value="one_time">Разовый</SelectItem>
+                </SelectContent>
+              </Select>
+            </FormField>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <FormField label="Имя ученика">
+              <Input value={studentName} onChange={(e) => setStudentName(e.target.value)} />
+            </FormField>
+            <FormField label="Возраст">
+              <Input type="number" min={0} value={age} onChange={(e) => setAge(e.target.value)} />
+            </FormField>
+            <FormField label="Класс">
+              <Input value={grade} onChange={(e) => setGrade(e.target.value)} />
+            </FormField>
+          </div>
+          <FormField label="Желаемый график">
+            <Input value={schedule} onChange={(e) => setSchedule(e.target.value)} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Цена в час" description="Число или «Договірна»">
+              <Input value={pricePerHour} onChange={(e) => setPricePerHour(e.target.value)} />
+            </FormField>
+            <FormField label="Цена заявки" description="Число или «Договірна»">
+              <Input value={requestPrice} onChange={(e) => setRequestPrice(e.target.value)} />
+            </FormField>
+          </div>
+          <FormField label="Доп. информация">
+            <Textarea
+              rows={3}
+              value={extraInfo}
+              onChange={(e) => setExtraInfo(e.target.value)}
+              placeholder="Цели, особенности, ограничения…"
+            />
+          </FormField>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Отмена
+          </Button>
+          <Button
+            onClick={() =>
+              onCreate({
+                subjectId: subjectId === '' ? null : subjectId,
+                dealType,
+                studentName: studentName.trim() || null,
+                age: age === '' ? null : Number(age),
+                grade: grade.trim() || null,
+                schedule: schedule.trim() || null,
+                pricePerHour: pricePerHour.trim() || null,
+                requestPrice: requestPrice.trim() || null,
+                extraInfo: extraInfo.trim() || null,
+                description: extraInfo.trim() || studentName.trim() || '',
               })
             }
           >

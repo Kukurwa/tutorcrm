@@ -38,15 +38,15 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (isLoading) {
     return (
-      <div className={cn('rounded-md border overflow-x-auto', className)}>
+      <div className={cn('overflow-x-auto rounded-md border', className)}>
         <table className="w-full min-w-[640px]">
-          <thead className="border-b bg-muted/40">
+          <thead className="bg-muted/40 border-b">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key}
                   className={cn(
-                    'h-10 px-4 text-left align-middle text-xs font-medium uppercase tracking-wide text-muted-foreground',
+                    'text-muted-foreground h-10 px-4 text-left align-middle text-xs font-medium uppercase tracking-wide',
                     col.className,
                   )}
                 >
@@ -80,15 +80,15 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn('rounded-md border', className)}>
-      <table className="w-full">
-        <thead className="border-b bg-muted/40">
+    <div className={cn('overflow-x-auto rounded-md border', className)}>
+      <table className="w-full min-w-[640px]">
+        <thead className="bg-muted/40 border-b">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={cn(
-                  'h-10 px-4 text-xs font-medium uppercase tracking-wide text-muted-foreground',
+                  'text-muted-foreground h-10 whitespace-nowrap px-3 text-xs font-medium uppercase tracking-wide',
                   col.align === 'right' && 'text-right',
                   col.align === 'center' && 'text-center',
                   (col.align === 'left' || !col.align) && 'text-left',
@@ -105,7 +105,7 @@ export function DataTable<T>({
             <tr
               key={getRowId(row)}
               className={cn(
-                'border-b transition-colors hover:bg-muted/30 last:border-b-0',
+                'hover:bg-muted/30 border-b transition-colors last:border-b-0',
                 onRowClick && 'cursor-pointer',
               )}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -114,7 +114,7 @@ export function DataTable<T>({
                 <td
                   key={col.key}
                   className={cn(
-                    'px-4 py-3 text-sm',
+                    'px-3 py-2 align-middle text-sm',
                     col.align === 'right' && 'text-right',
                     col.align === 'center' && 'text-center',
                     col.className,

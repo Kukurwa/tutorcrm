@@ -5,11 +5,60 @@ import { MockCollection } from './collection';
 const now = new Date().toISOString();
 
 const subjects: Subject[] = [
-  { id: 'subj_math', name: 'Математика', active: true, createdAt: now, updatedAt: now },
-  { id: 'subj_english', name: 'Английский', active: true, createdAt: now, updatedAt: now },
-  { id: 'subj_physics', name: 'Физика', active: true, createdAt: now, updatedAt: now },
-  { id: 'subj_ukr', name: 'Украинский язык', active: true, createdAt: now, updatedAt: now },
-  { id: 'subj_zno', name: 'Подготовка к ЗНО', active: true, createdAt: now, updatedAt: now },
+  {
+    id: 'subj_math',
+    name: 'Математика',
+    code: 'М',
+    contractCode: 'МК',
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'subj_english',
+    name: 'Английский',
+    code: 'А',
+    contractCode: 'АК',
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'subj_physics',
+    name: 'Физика',
+    code: 'Ф',
+    contractCode: 'ФК',
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'subj_ukr',
+    name: 'Украинский язык',
+    code: 'У',
+    contractCode: 'УК',
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'subj_zno',
+    name: 'Подготовка к ЗНО',
+    code: 'З',
+    contractCode: null,
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: 'subj_dutch',
+    name: 'Нидерландский',
+    code: 'Н',
+    contractCode: 'НДК',
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  },
 ];
 
 const channels: SubjectChannel[] = [

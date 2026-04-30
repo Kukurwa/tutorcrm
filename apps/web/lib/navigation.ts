@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['admin', 'dispatcher', 'leadgen'],
   },
   { href: '/inbox', label: 'Inbox', icon: 'inbox', roles: ['admin', 'dispatcher'] },
-  { href: '/funnel', label: 'Воронка', icon: 'funnel', roles: ['admin', 'dispatcher', 'leadgen'] },
+  { href: '/funnel', label: 'Воронка', icon: 'funnel', roles: ['admin', 'dispatcher'] },
   { href: '/requests', label: 'Заявки', icon: 'requests', roles: ['admin', 'dispatcher'] },
   { href: '/contracts', label: 'Контракты', icon: 'contracts', roles: ['admin', 'dispatcher'] },
   { href: '/clients', label: 'Клиенты', icon: 'clients', roles: ['admin', 'dispatcher'] },

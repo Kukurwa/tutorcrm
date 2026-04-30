@@ -17,6 +17,9 @@ export const requestStageKindSchema = z.enum([
 ]);
 export type RequestStageKind = z.infer<typeof requestStageKindSchema>;
 
+// «Договірна» — диспетчер может вписать слово вместо числа; храним как nullable string.
+const priceTextSchema = z.string().trim().max(40).nullable();
+
 export const requestSchema = z.object({
   id: idSchema,
   clientId: idSchema,
@@ -25,13 +28,23 @@ export const requestSchema = z.object({
   subjectName: z.string().nullable(),
   dealType: dealTypeSchema,
   description: z.string(),
+  // Новая модель полей по правкам клиента
+  studentName: z.string().nullable(),
+  age: z.number().int().min(0).max(120).nullable(),
+  grade: z.string().nullable(), // класс
+  schedule: z.string().nullable(),
+  pricePerHour: priceTextSchema, // цена/час — число строкой или «Договірна»
+  requestPrice: priceTextSchema, // цена заявки
+  extraInfo: z.string().nullable(),
+  // Старая модель — оставлена для обратной совместимости с моками/инвойсами
   budgetFrom: z.number().int().min(0).nullable(),
   budgetTo: z.number().int().min(0).nullable(),
-  schedule: z.string().nullable(),
   stage: requestStageKindSchema,
   dispatcherId: idSchema.nullable(),
   publishedChannels: z.array(z.string()),
   publishedAt: isoDateTimeSchema.nullable(),
+  republishedAt: isoDateTimeSchema.nullable(),
+  republishCount: z.number().int().min(0).default(0),
   assignedTutorId: idSchema.nullable(),
   rejectionReasonId: idSchema.nullable(),
   createdAt: isoDateTimeSchema,
@@ -43,20 +56,28 @@ export const createRequestSchema = z.object({
   clientId: idSchema,
   subjectId: idSchema.nullable().default(null),
   dealType: dealTypeSchema,
-  description: z.string().min(1),
-  budgetFrom: z.number().int().min(0).nullable().default(null),
-  budgetTo: z.number().int().min(0).nullable().default(null),
+  description: z.string().default(''),
+  studentName: z.string().nullable().default(null),
+  age: z.number().int().min(0).max(120).nullable().default(null),
+  grade: z.string().nullable().default(null),
   schedule: z.string().nullable().default(null),
+  pricePerHour: priceTextSchema.default(null),
+  requestPrice: priceTextSchema.default(null),
+  extraInfo: z.string().nullable().default(null),
 });
 export type CreateRequestRequest = z.infer<typeof createRequestSchema>;
 
 export const updateRequestSchema = z.object({
-  description: z.string().min(1).optional(),
+  description: z.string().optional(),
   subjectId: idSchema.nullable().optional(),
   dealType: dealTypeSchema.optional(),
-  budgetFrom: z.number().int().min(0).nullable().optional(),
-  budgetTo: z.number().int().min(0).nullable().optional(),
+  studentName: z.string().nullable().optional(),
+  age: z.number().int().min(0).max(120).nullable().optional(),
+  grade: z.string().nullable().optional(),
   schedule: z.string().nullable().optional(),
+  pricePerHour: priceTextSchema.optional(),
+  requestPrice: priceTextSchema.optional(),
+  extraInfo: z.string().nullable().optional(),
 });
 export type UpdateRequestRequest = z.infer<typeof updateRequestSchema>;
 
@@ -71,16 +92,20 @@ export const listRequestsQuerySchema = paginationQuerySchema.extend({
   stage: requestStageKindSchema.optional(),
   q: z.string().optional(),
   dispatcherId: idSchema.optional(),
+  subjectId: idSchema.optional(),
 });
 export type ListRequestsQuery = z.infer<typeof listRequestsQuerySchema>;
 
+// Перевыставление заявки: можно поправить цену и доп. описание перед повторной публикацией
+export const republishRequestSchema = z.object({
+  pricePerHour: priceTextSchema.optional(),
+  requestPrice: priceTextSchema.optional(),
+  extraInfo: z.string().nullable().optional(),
+});
+export type RepublishRequestRequest = z.infer<typeof republishRequestSchema>;
+
 // Request responses
-export const requestResponseStatusSchema = z.enum([
-  'new',
-  'interested',
-  'declined',
-  'selected',
-]);
+export const requestResponseStatusSchema = z.enum(['new', 'interested', 'declined', 'selected']);
 export type RequestResponseStatus = z.infer<typeof requestResponseStatusSchema>;
 
 export const requestResponseSchema = z.object({

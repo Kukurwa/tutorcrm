@@ -2,7 +2,15 @@ import { z } from 'zod';
 
 import { idSchema, isoDateTimeSchema, paginationQuerySchema } from './common';
 
-export const contactKindSchema = z.enum(['phone', 'telegram', 'whatsapp', 'viber', 'instagram', 'facebook', 'email']);
+export const contactKindSchema = z.enum([
+  'phone',
+  'telegram',
+  'whatsapp',
+  'viber',
+  'instagram',
+  'facebook',
+  'email',
+]);
 export type ContactKind = z.infer<typeof contactKindSchema>;
 
 export const clientContactSchema = z.object({
@@ -62,17 +70,23 @@ export const listClientsQuerySchema = paginationQuerySchema.extend({
 });
 export type ListClientsQuery = z.infer<typeof listClientsQuerySchema>;
 
-// Leads (от LeadGen)
+// Leads (от LeadGen) — упрощённая модель: свободный текст + контакт.
+// По правкам клиента: «Для лидгена достаточно поле текст и поле контакт
+// и возможность вручную назначить диспетчера или авто-распределение».
 export const leadStatusSchema = z.enum(['new', 'assigned', 'converted', 'rejected']);
 export type LeadStatus = z.infer<typeof leadStatusSchema>;
 
 export const leadSchema = z.object({
   id: idSchema,
+  text: z.string().min(1), // свободный текст: запрос клиента / предмет / детали
+  contact: z.string().min(1), // контакт: телефон, ник, email
+  // Обратная совместимость со старыми полями (производные от text/contact)
   clientName: z.string().min(1),
   phone: z.string().nullable(),
   subject: z.string().nullable(),
   note: z.string().nullable(),
   status: leadStatusSchema,
+  autoAssigned: z.boolean(),
   createdBy: idSchema,
   dispatcherId: idSchema.nullable(),
   clientId: idSchema.nullable(),
@@ -82,10 +96,11 @@ export const leadSchema = z.object({
 export type Lead = z.infer<typeof leadSchema>;
 
 export const createLeadSchema = z.object({
-  clientName: z.string().min(1),
-  phone: z.string().min(3).nullable().default(null),
-  subject: z.string().nullable().default(null),
-  note: z.string().nullable().default(null),
+  text: z.string().min(1),
+  contact: z.string().min(1),
+  // null = авто-распределение, id — конкретный диспетчер
+  dispatcherId: idSchema.nullable().default(null),
+  autoAssign: z.boolean().default(false),
 });
 export type CreateLeadRequest = z.infer<typeof createLeadSchema>;
 

@@ -18,6 +18,10 @@ export type SubjectChannel = z.infer<typeof subjectChannelSchema>;
 export const subjectSchema = z.object({
   id: idSchema,
   name: z.string().min(1),
+  // Буквенный код для генерации идентификатора заказа: А-1, М-5 и т.п.
+  code: z.string().min(1).max(8),
+  // Префикс для контрактных заказов (НДК-1.1.). Если null — используется основной code.
+  contractCode: z.string().min(1).max(8).nullable(),
   active: z.boolean(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
@@ -31,6 +35,8 @@ export type SubjectWithChannels = z.infer<typeof subjectWithChannelsSchema>;
 
 export const createSubjectSchema = z.object({
   name: z.string().min(1),
+  code: z.string().min(1).max(8),
+  contractCode: z.string().min(1).max(8).nullable().default(null),
   active: z.boolean().default(true),
 });
 export type CreateSubjectRequest = z.infer<typeof createSubjectSchema>;

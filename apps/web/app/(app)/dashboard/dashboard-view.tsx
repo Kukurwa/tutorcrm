@@ -22,7 +22,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  cn,
   FormField,
   Input,
   Select,
@@ -170,29 +169,17 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                 icon={ShieldCheck}
                 title="Активные контракты"
                 value={data.operations.activeContracts}
-                gradient="from-emerald-50 to-emerald-100"
-                iconBg="bg-emerald-500"
               />
               <MetricTile
                 icon={Inbox}
                 title="Непрочитанные диалоги"
                 value={data.operations.unreadDialogs}
-                gradient="from-amber-50 to-amber-100"
-                iconBg="bg-amber-500"
               />
-              <MetricTile
-                icon={Sprout}
-                title="Новые лиды"
-                value={data.operations.newLeads}
-                gradient="from-blue-50 to-blue-100"
-                iconBg="bg-blue-500"
-              />
+              <MetricTile icon={Sprout} title="Новые лиды" value={data.operations.newLeads} />
               <MetricTile
                 icon={AlertTriangle}
                 title="Просроченные задачи"
                 value={data.operations.overdueTasks}
-                gradient="from-rose-50 to-rose-100"
-                iconBg="bg-rose-500"
               />
             </div>
           </div>
@@ -206,29 +193,21 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                 icon={Banknote}
                 title="Выставлено клиентам"
                 value={formatCurrency(data.finance.totalInvoicedClient)}
-                gradient="from-slate-50 to-slate-100"
-                iconBg="bg-slate-500"
               />
               <MetricTile
                 icon={Wallet}
                 title="Оплачено клиентами"
                 value={formatCurrency(data.finance.totalPaidClient)}
-                gradient="from-emerald-50 to-emerald-100"
-                iconBg="bg-emerald-500"
               />
               <MetricTile
                 icon={TrendingUp}
                 title="Комиссия (прогноз)"
                 value={formatCurrency(Math.round(data.finance.totalCommissionProjected))}
-                gradient="from-indigo-50 to-indigo-100"
-                iconBg="bg-indigo-500"
               />
               <MetricTile
                 icon={Clock}
                 title="Просроченные инвойсы"
                 value={data.finance.overdueInvoices}
-                gradient="from-rose-50 to-rose-100"
-                iconBg="bg-rose-500"
               />
             </div>
           </div>
@@ -254,7 +233,7 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                         </div>
                         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-blue-500"
+                            className="bg-primary h-full rounded-full"
                             style={{ width: `${(count / funnelMax) * 100}%` }}
                           />
                         </div>
@@ -289,7 +268,7 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                         <tr key={r.subjectId} className="border-b last:border-b-0">
                           <td className="py-2">{r.name}</td>
                           <td className="py-2 text-right font-medium tabular-nums">{r.requests}</td>
-                          <td className="py-2 text-right font-medium tabular-nums text-emerald-600">
+                          <td className="py-2 text-right font-medium tabular-nums">
                             {r.contracts}
                           </td>
                         </tr>
@@ -316,15 +295,7 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                   <ul className="space-y-2">
                     {data.tutors.map((t, i) => (
                       <li key={t.id} className="flex items-center gap-3 text-sm">
-                        <span
-                          className={cn(
-                            'inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
-                            i === 0 && 'bg-amber-100 text-amber-700',
-                            i === 1 && 'bg-slate-100 text-slate-700',
-                            i === 2 && 'bg-orange-100 text-orange-700',
-                            i > 2 && 'bg-muted text-muted-foreground',
-                          )}
-                        >
+                        <span className="bg-muted inline-flex h-7 w-7 items-center justify-center rounded-full border text-xs font-medium tabular-nums">
                           {i + 1}
                         </span>
                         <span className="flex-1 font-medium">{t.name}</span>
@@ -368,34 +339,20 @@ function MetricTile({
   icon: Icon,
   title,
   value,
-  gradient,
-  iconBg,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   value: number | string;
-  gradient: string;
-  iconBg: string;
 }) {
   return (
-    <Card
-      className={cn(
-        'overflow-hidden border-transparent bg-gradient-to-br shadow-sm transition-shadow hover:shadow-md',
-        gradient,
-      )}
-    >
+    <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <div
-          className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white shadow-sm',
-            iconBg,
-          )}
-        >
-          <Icon className="h-5 w-5" />
+        <div className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-md border">
+          <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-medium text-slate-600">{title}</div>
-          <div className="text-2xl font-semibold tabular-nums text-slate-900">{value}</div>
+          <div className="text-muted-foreground text-xs">{title}</div>
+          <div className="text-2xl font-semibold tabular-nums">{value}</div>
         </div>
       </CardContent>
     </Card>

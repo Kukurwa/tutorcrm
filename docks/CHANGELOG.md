@@ -12,6 +12,40 @@
 
 ---
 
+### 2026-04-30 — Большая партия UX-правок по фидбеку клиента (Inbox, Заявки, Контракты, Клиенты, Репетиторы, Лидген)
+
+**Модель данных (zod-контракты):**
+- `Request` — убрана обязательность `description`; добавлены `studentName`, `age`, `grade`, `pricePerHour` и `requestPrice` (string|null — поддерживают «Договірна»), `extraInfo`, `republishedAt`/`republishCount`. Старые `budgetFrom`/`budgetTo` сохранены nullable для обратной совместимости.
+- `Tutor` — добавлены: `viberPhone`, `telegramHandle`, `age`, `isOffline`/`offlineCity`, `additionalSubject`, `education`, `teachesInRussian`, `workingLevels[]`, `workingAgeRange`, `teachingMethodNotes`, `additionalInfo`, `isBlacklisted` (ЧС), `termsKind` (`contract`/`regular`); `TutorEffectiveness` тип.
+- `Contract` — добавлены: `code` (А-1, М-5, НДК-1.1), `studentName`, `parentName`, `age`, `level`, `contactInfo`, `tutorContact`, `pricePerLesson`, `lessonsPerWeek`, `requestPrice`, `trialAt`, `paidAt`, `amountReceived`, `accountantVerified` (галочка бухгалтера), `onFop`, `comment`. `updateContractSchema` для редактирования карточки ученика.
+- `Lesson` — новая модель: дата + статус (`success`/`rescheduled`/`cancelled`) + заметка. `WeeklyLessonCount` оставлен как fallback.
+- `OneTimeDealPayment` — добавлен `accountantVerified`.
+- `Subject` — добавлены `code` (А, М, Ф, У, З, Н) и `contractCode` (НДК и т.п.) для генерации кодов заказов.
+- `Lead` — упрощён до `text` + `contact` + опциональный `dispatcherId`/`autoAssign` (старые поля в схеме сохранены для совместимости).
+- `Inbox` — `Dialog.partyKind` (`client`/`tutor`/`work_group`), `Dialog.tutorId`, `Dialog.folderId`. `InboxFolder` (CRUD, owner-scoped). Новые контракты `createRequestFromDialogSchema`, `updateDialogSchema`. В `createLeadFromDialogSchema` `subject: string` заменено на `subjectId: string`.
+
+**Моки и API:**
+- Расширены сиды subjects (с code), tutors (полные поля), contracts (А-1/АК-1.1 коды), inbox (диалоги c партиями `tutor`/`work_group` для демонстрации папок), lessons (2 урока seed), leads (`text`+`contact`+`autoAssigned`).
+- Новые route handlers: `POST /api/requests/[id]/republish`, `GET/POST /api/lessons` + `PATCH/DELETE /api/lessons/[id]`, `GET/POST /api/inbox-folders` + `DELETE /api/inbox-folders/[id]`, `POST /api/dialogs/[id]/create-request`, `PATCH /api/dialogs/[id]` (смена `stage`/`folderId`).
+- `POST /api/leads` принимает упрощённый payload, реализовано round-robin авто-распределение по диспетчерам.
+- `POST /api/contracts` генерирует `code` через утилиту `lib/order-code.ts` (regular: subject.code-N; contract: subject.contractCode-tutorIdx.clientIdx) и переносит в контракт `studentName`/`age`/`pricePerLesson`/`requestPrice`/`tutorContact`.
+- `GET /api/dialogs` фильтрует по `channel`, `partyKind`, `folderId`, `stage`. `GET /api/contracts` и `GET /api/requests` — по `subjectId`/`dispatcherId`.
+
+**UI:**
+- **Inbox**: системные папки (Клиенты / Репетиторы / Раб. группы — авто-фильтр по `partyKind`) + пользовательские папки (CRUD); фильтры мессенджер + стадия воронки; смена стадии прямо в контекст-панели; кнопка «Скрипты» в инпуте — выпадающий список (релевантные стадии — наверх, переменные `{{client_name}}` подставляются); рабочая кнопка «Сформировать заявку» из чата — диалог с новыми полями; в «Создать лид» предмет теперь `<Select>` из справочника.
+- **Воронка**: для admin — фильтр по диспетчеру над доской; карточки заявки показывают новые цены вместо `budgetFrom/To`.
+- **Заявки**: вкладки-листы по предметам (`Все` + по каждому subject.code); сортировка по дате публикации (новые сверху); кнопка «Перевыставить» появляется при `publishedAt > 1ч` без откликов и открывает диалог редактирования цен; форма создания и карточка перешли на новую модель полей; превью поста в канал — без бюджета, с новыми данными.
+- **Контракты**: индексная страница теперь показывает все ученики с разбивкой по предметам и фильтром диспетчера для admin; клик по строке открывает **отдельную страницу `/contracts/[id]`** с табами Карточка / Уроки / Платежи / Инвойсы / События. Уроки — список с датами и статусами (success/rescheduled/cancelled) + блок «по неделям» как fallback. Платежи — со checkbox «Оплата найдена (бухгалтер)». Карточка — все новые поля (`code`, `pricePerLesson`, `lessonsPerWeek`, `trialAt`, `paidAt`, `amountReceived`, `onFop`, `comment`).
+- **Клиенты**: Excel-стиль таблица заказов (каждая строка = `Contract`) — Код, Дата, Имя ученика, Контакты, Возраст, Цена 1 ур., Уроков/нед, Цена заявки, Контакт+ФИО репа, Дата пробного, По факту, Получено + ✓ бухгалтера, ФОП, Комментарии. Вкладки-листы по предметам + фильтр диспетчера для admin. Клик по коду/имени → отдельная страница `/clients/[id]` с заказами и заявками.
+- **Репетиторы**: вкладки `Контрактные`/`Обычные` → внутри подвкладки по предметам. Список — Имя, TG-ник, Возраст, Опыт, Эффективность (% closed_won от назначений). Карточка с украинскими полями (Ім'я, Viber, Telegram, Освіта, Рівні, Метод…), флаг «В чёрном списке», история заявок (свои/все), кнопки «Связаться в TG» / «Позвонить» (заглушки на MVP).
+- **Лидген**: убран пункт «Воронка» из меню; на дашборде вместо CTA на воронку — форма «Новый лид» (только Текст + Контакт + Select диспетчера или «Авто-распределение») и таблица «Мои лиды» с категорией/диспетчером/auto-меткой.
+
+**Прочее:**
+- Утилита `lib/order-code.ts` для генерации кодов заказов.
+- Telegram-deeplink (`https://t.me/...`) и `viber://chat?number=...` подключены как ссылки в карточке репетитора.
+
+**Приёмка**: `pnpm --filter @tutorcrm/web typecheck` чисто; `pnpm --filter @tutorcrm/web build` собирает 21 страницу + новые API роуты.
+
 ### 2026-04-24 — Полный адаптив (mobile / tablet / desktop)
 
 - Новый UI-компонент `Sheet` в `@tutorcrm/ui` (Radix Dialog + variants left/right/top/bottom) для мобильных drawer'ов.

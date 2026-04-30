@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     amount: parsed.data.amount,
     status: parsed.data.status,
     paidAt: parsed.data.status === 'paid' ? nowIso() : null,
+    accountantVerified: false,
     note: parsed.data.note,
     createdAt: nowIso(),
   };

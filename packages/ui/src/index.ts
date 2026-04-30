@@ -16,17 +16,10 @@ export {
 } from './components/select';
 export { Skeleton } from './components/skeleton';
 export { EmptyState, type EmptyStateProps } from './components/empty-state';
+export { Badge, badgeVariants, type BadgeProps } from './components/badge';
 export { RoleBadge, type RoleBadgeProps, type Role } from './components/role-badge';
-export {
-  StatusBadge,
-  type StatusBadgeProps,
-  type StatusTone,
-} from './components/status-badge';
-export {
-  DataTable,
-  type DataTableColumn,
-  type DataTableProps,
-} from './components/data-table';
+export { StatusBadge, type StatusBadgeProps, type StatusTone } from './components/status-badge';
+export { DataTable, type DataTableColumn, type DataTableProps } from './components/data-table';
 export {
   Card,
   CardHeader,

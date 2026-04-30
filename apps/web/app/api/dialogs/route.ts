@@ -13,6 +13,9 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const stage = url.searchParams.get('stage');
+  const channel = url.searchParams.get('channel');
+  const partyKind = url.searchParams.get('partyKind');
+  const folderId = url.searchParams.get('folderId');
   const q = url.searchParams.get('q')?.toLowerCase() ?? '';
   const mine = url.searchParams.get('mine') === '1';
 
@@ -22,11 +25,13 @@ export async function GET(req: Request) {
     rows = rows.filter((d) => d.dispatcherId === guard.session.user.id || d.dispatcherId === null);
   }
   if (stage) rows = rows.filter((d) => d.stage === stage);
+  if (channel) rows = rows.filter((d) => d.channel === channel);
+  if (partyKind) rows = rows.filter((d) => d.partyKind === partyKind);
+  if (folderId) rows = rows.filter((d) => d.folderId === folderId);
   if (q) {
     rows = rows.filter(
       (d) =>
-        d.clientName.toLowerCase().includes(q) ||
-        d.lastMessagePreview.toLowerCase().includes(q),
+        d.clientName.toLowerCase().includes(q) || d.lastMessagePreview.toLowerCase().includes(q),
     );
   }
 

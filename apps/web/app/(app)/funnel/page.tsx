@@ -6,6 +6,7 @@ import {
   rejectionReasonsStore,
   requestsStore,
   tutorsStore,
+  usersStore,
 } from '@/mocks/store';
 
 import { FunnelBoard } from './funnel-board';
@@ -15,17 +16,22 @@ export const metadata = { title: 'Воронка — TutorCRM' };
 export default async function FunnelPage() {
   const session = await requireRole('admin', 'dispatcher');
 
-  const [requests, stages, reasons, tutors] = await Promise.all([
+  const [requests, stages, reasons, tutors, users] = await Promise.all([
     requestsStore.list(),
     funnelStagesStore.list(),
     rejectionReasonsStore.list(),
     tutorsStore.list(),
+    usersStore.list(),
   ]);
 
   let rows = requests;
   if (session.user.role === 'dispatcher') {
     rows = rows.filter((r) => r.dispatcherId === session.user.id);
   }
+
+  const dispatchers = users
+    .filter((u) => u.role === 'dispatcher' && u.status === 'active')
+    .map((u) => ({ id: u.id, name: u.name }));
 
   return (
     <div className="space-y-6">
@@ -38,6 +44,8 @@ export default async function FunnelPage() {
         stages={stages.sort((a, b) => a.order - b.order)}
         reasons={reasons.filter((r) => r.active)}
         tutors={tutors.filter((t) => t.status === 'active')}
+        dispatchers={dispatchers}
+        canFilterByDispatcher={session.user.role === 'admin'}
       />
     </div>
   );

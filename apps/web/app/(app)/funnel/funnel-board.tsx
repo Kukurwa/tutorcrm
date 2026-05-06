@@ -156,7 +156,7 @@ export function FunnelBoard({
             <div
               key={s.id}
               className={cn(
-                'bg-card flex min-h-[480px] w-72 shrink-0 flex-col rounded-lg border',
+                'bg-card flex min-h-[480px] w-72 shrink-0 flex-col overflow-hidden rounded-lg border',
                 hoverStage === s.kind && 'ring-primary ring-2',
                 !isDropTarget &&
                   dragId &&
@@ -173,6 +173,8 @@ export function FunnelBoard({
                 onDrop(s);
               }}
             >
+              {/* Верхняя цветная полоса в цвете стадии */}
+              <div className="h-1" style={{ backgroundColor: s.color }} aria-hidden />
               <div className="flex items-center justify-between border-b p-3">
                 <div className="flex items-center gap-2">
                   <span

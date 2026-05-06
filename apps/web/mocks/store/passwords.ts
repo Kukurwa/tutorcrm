@@ -4,6 +4,9 @@
 const passwords = new Map<string, string>([
   ['user_admin', 'admin123'],
   ['user_dispatcher', 'dispatcher123'],
+  ['user_dispatcher_2', 'dispatcher123'],
+  ['user_dispatcher_3', 'dispatcher123'],
+  ['user_dispatcher_4', 'dispatcher123'],
   ['user_leadgen', 'leadgen123'],
 ]);
 

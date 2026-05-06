@@ -34,17 +34,11 @@ import {
   Textarea,
 } from '@tutorcrm/ui';
 
+import { ColoredAvatar } from '@/components/colored-avatar';
+import { MessengerIcon } from '@/components/messenger-icon';
 import { formatRelativeTime } from '@/lib/format';
 
 import type { InboxFilters } from './inbox-workspace';
-
-const CHANNEL_ICON: Record<MessengerChannel, string> = {
-  telegram: 'TG',
-  whatsapp: 'WA',
-  viber: 'VB',
-  instagram: 'IG',
-  facebook: 'FB',
-};
 
 const CHANNEL_LABEL: Record<MessengerChannel, string> = {
   telegram: 'Telegram',
@@ -262,34 +256,43 @@ export function DialogList({
               <button
                 onClick={() => onSelect(d.id)}
                 className={cn(
-                  'hover:bg-muted/50 flex w-full flex-col items-start gap-1 border-b px-3 py-2 text-left transition-colors',
+                  'hover:bg-muted/50 flex w-full items-start gap-3 border-b px-3 py-3 text-left transition-colors',
                   activeId === d.id && 'bg-muted/70',
                 )}
               >
-                <div className="flex w-full items-center gap-2">
-                  <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px] uppercase">
-                    {CHANNEL_ICON[d.channel]}
-                  </span>
-                  <span className="flex-1 truncate text-sm font-medium">{d.clientName}</span>
-                  <span className="text-muted-foreground text-[10px]">
-                    {formatRelativeTime(d.lastMessageAt)}
+                {/* Аватар собеседника + бейдж канала в углу */}
+                <div className="relative shrink-0">
+                  <ColoredAvatar name={d.clientName} className="h-10 w-10" />
+                  <span className="ring-card absolute -bottom-1 -right-1 rounded-md ring-2">
+                    <MessengerIcon channel={d.channel} size="sm" />
                   </span>
                 </div>
-                <p className="text-muted-foreground line-clamp-1 text-xs">{d.lastMessagePreview}</p>
-                <div className="flex items-center gap-1.5">
-                  <StatusBadge
-                    tone={d.stage === 'new_dialog' ? 'warning' : 'info'}
-                    label={STAGE_LABEL[d.stage]}
-                    className="text-[10px]"
-                  />
-                  {d.unread > 0 ? (
-                    <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 text-[10px] font-medium">
-                      {d.unread}
+
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex w-full items-center gap-2">
+                    <span className="flex-1 truncate text-sm font-medium">{d.clientName}</span>
+                    <span className="text-muted-foreground shrink-0 text-[10px] tabular-nums">
+                      {formatRelativeTime(d.lastMessageAt)}
                     </span>
-                  ) : null}
-                  {d.slaDueAt && d.stage === 'new_dialog' ? (
-                    <StatusBadge tone="danger" label="SLA" className="text-[10px]" />
-                  ) : null}
+                  </div>
+                  <p className="text-muted-foreground line-clamp-1 text-xs">
+                    {d.lastMessagePreview}
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <StatusBadge
+                      tone={d.stage === 'new_dialog' ? 'warning' : 'info'}
+                      label={STAGE_LABEL[d.stage]}
+                      className="text-[10px]"
+                    />
+                    {d.unread > 0 ? (
+                      <span className="bg-primary text-primary-foreground inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 text-[10px] font-medium tabular-nums">
+                        {d.unread}
+                      </span>
+                    ) : null}
+                    {d.slaDueAt && d.stage === 'new_dialog' ? (
+                      <StatusBadge tone="danger" label="SLA" className="text-[10px]" />
+                    ) : null}
+                  </div>
                 </div>
               </button>
             </li>

@@ -5,9 +5,9 @@ import { Badge } from './badge';
 export type Role = 'admin' | 'dispatcher' | 'leadgen';
 
 const LABELS: Record<Role, string> = {
-  admin: 'Admin',
-  dispatcher: 'Dispatcher',
-  leadgen: 'LeadGen',
+  admin: 'Администратор',
+  dispatcher: 'Диспетчер',
+  leadgen: 'Лидген',
 };
 
 export interface RoleBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {

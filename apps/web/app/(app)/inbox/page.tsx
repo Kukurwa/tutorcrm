@@ -3,7 +3,7 @@ import { funnelStagesStore, inboxFoldersStore, scriptsStore, subjectsStore } fro
 
 import { InboxWorkspace } from './inbox-workspace';
 
-export const metadata = { title: 'Inbox — TutorCRM' };
+export const metadata = { title: 'Входящие — TutorCRM' };
 
 export default async function InboxPage() {
   const session = await requireRole('admin', 'dispatcher');

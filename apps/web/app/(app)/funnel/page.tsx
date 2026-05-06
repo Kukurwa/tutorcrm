@@ -37,7 +37,7 @@ export default async function FunnelPage() {
     <div className="space-y-6">
       <PageHeader
         title="Воронка"
-        description="Kanban-доска. DnD только по разрешённым переходам. Закрытие в отказ — с обязательной причиной."
+        description="Канбан-доска. Перетаскивание только по разрешённым переходам. Закрытие в отказ — с обязательной причиной."
       />
       <FunnelBoard
         initial={rows}

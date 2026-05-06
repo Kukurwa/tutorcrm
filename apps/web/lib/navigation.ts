@@ -19,7 +19,9 @@ export type NavIcon =
   | 'scripts'
   | 'settings'
   | 'calendar'
-  | 'profile';
+  | 'profile'
+  | 'payroll'
+  | 'metrics';
 
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -28,14 +30,16 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'dashboard',
     roles: ['admin', 'dispatcher', 'leadgen'],
   },
-  { href: '/inbox', label: 'Inbox', icon: 'inbox', roles: ['admin', 'dispatcher'] },
+  { href: '/inbox', label: 'Входящие', icon: 'inbox', roles: ['admin', 'dispatcher'] },
   { href: '/funnel', label: 'Воронка', icon: 'funnel', roles: ['admin', 'dispatcher'] },
   { href: '/requests', label: 'Заявки', icon: 'requests', roles: ['admin', 'dispatcher'] },
   { href: '/contracts', label: 'Контракты', icon: 'contracts', roles: ['admin', 'dispatcher'] },
   { href: '/clients', label: 'Клиенты', icon: 'clients', roles: ['admin', 'dispatcher'] },
   { href: '/tutors', label: 'Репетиторы', icon: 'tutors', roles: ['admin', 'dispatcher'] },
   { href: '/calendar', label: 'Календарь', icon: 'calendar', roles: ['admin', 'dispatcher'] },
+  { href: '/metrics', label: 'Метрики', icon: 'metrics', roles: ['admin'] },
   { href: '/users', label: 'Пользователи', icon: 'users', roles: ['admin'] },
+  { href: '/payroll', label: 'Зарплаты', icon: 'payroll', roles: ['admin'] },
   { href: '/scripts', label: 'Скрипты', icon: 'scripts', roles: ['admin'] },
   { href: '/settings', label: 'Настройки', icon: 'settings', roles: ['admin'] },
 ];

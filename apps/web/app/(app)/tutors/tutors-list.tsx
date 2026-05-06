@@ -330,14 +330,14 @@ function TutorDetailDialog({
             <TabsTrigger value="history">История заявок ({visibleHistory.length})</TabsTrigger>
           </TabsList>
           <TabsContent value="info" className="grid gap-3 md:grid-cols-2">
-            <Field label="Ім'я Прізвище" value={tutor.name} />
+            <Field label="Имя Фамилия" value={tutor.name} />
             <Field
-              label="Номер телефону"
+              label="Номер телефона"
               value={tutor.phone}
               action={tutor.phone ? `tel:${tutor.phone}` : null}
             />
             <Field
-              label="Номер у Вайбері"
+              label="Номер в Viber"
               value={tutor.viberPhone}
               action={
                 tutor.viberPhone
@@ -346,7 +346,7 @@ function TutorDetailDialog({
               }
             />
             <Field
-              label="Нік в телеграмі"
+              label="Ник в Telegram"
               value={tutor.telegramHandle}
               action={
                 tutor.telegramHandle
@@ -354,29 +354,29 @@ function TutorDetailDialog({
                   : null
               }
             />
-            <Field label="Досвід роботи" value={`${tutor.experienceYears} р.`} />
-            <Field label="Вік" value={tutor.age?.toString() ?? null} />
+            <Field label="Опыт работы" value={`${tutor.experienceYears} л.`} />
+            <Field label="Возраст" value={tutor.age?.toString() ?? null} />
             <Field
               label="Офлайн"
-              value={tutor.isOffline ? `так (${tutor.offlineCity ?? '—'})` : 'ні'}
+              value={tutor.isOffline ? `да (${tutor.offlineCity ?? '—'})` : 'нет'}
             />
-            <Field label="Додатковий предмет" value={tutor.additionalSubject} />
-            <Field label="Освіта" value={tutor.education} />
-            <Field label="Викладання російською" value={tutor.teachesInRussian ? 'так' : 'ні'} />
+            <Field label="Дополнительный предмет" value={tutor.additionalSubject} />
+            <Field label="Образование" value={tutor.education} />
+            <Field label="Преподавание на русском" value={tutor.teachesInRussian ? 'да' : 'нет'} />
             <Field
-              label="Рівні знань"
+              label="Уровни знаний"
               value={tutor.workingLevels.length > 0 ? tutor.workingLevels.join(', ') : null}
             />
-            <Field label="Вікова категорія" value={tutor.workingAgeRange} />
+            <Field label="Возрастная категория" value={tutor.workingAgeRange} />
             <div className="md:col-span-2">
               <Field
-                label="Особливості методу викладання"
+                label="Особенности метода преподавания"
                 value={tutor.teachingMethodNotes}
                 multiline
               />
             </div>
             <div className="md:col-span-2">
-              <Field label="Додаткова інформація" value={tutor.additionalInfo} multiline />
+              <Field label="Дополнительная информация" value={tutor.additionalInfo} multiline />
             </div>
             <div className="flex items-center gap-2 md:col-span-2">
               <Checkbox
@@ -537,7 +537,7 @@ function TutorDialog({
         </DialogHeader>
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Ім'я Прізвище" required>
+            <FormField label="Имя Фамилия" required>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </FormField>
             <FormField label="Тип условий">
@@ -598,7 +598,7 @@ function TutorDialog({
                 <Input
                   value={offlineCity}
                   onChange={(e) => setOfflineCity(e.target.value)}
-                  placeholder="Місто"
+                  placeholder="Город"
                 />
               ) : null}
             </div>
@@ -607,20 +607,20 @@ function TutorDialog({
                 checked={teachesInRussian}
                 onCheckedChange={(v) => setTeachesInRussian(v === true)}
               />
-              Викладання російською
+              Преподавание на русском
             </label>
           </div>
-          <FormField label="Освіта / де навчається">
+          <FormField label="Образование / где учится">
             <Input value={education} onChange={(e) => setEducation(e.target.value)} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Додатковий предмет">
+            <FormField label="Дополнительный предмет">
               <Input
                 value={additionalSubject}
                 onChange={(e) => setAdditionalSubject(e.target.value)}
               />
             </FormField>
-            <FormField label="Вікова категорія">
+            <FormField label="Возрастная категория">
               <Input
                 value={workingAgeRange}
                 onChange={(e) => setWorkingAgeRange(e.target.value)}
@@ -628,20 +628,20 @@ function TutorDialog({
               />
             </FormField>
           </div>
-          <FormField label="Рівні знань (через кому)">
+          <FormField label="Уровни знаний (через запятую)">
             <Input
               value={workingLevels}
               onChange={(e) => setWorkingLevels(e.target.value)}
-              placeholder="ЗНО, B1, 9-11 клас"
+              placeholder="ЕГЭ, B1, 9-11 класс"
             />
           </FormField>
-          <FormField label="Особливості методу">
+          <FormField label="Особенности метода">
             <Textarea
               value={teachingMethodNotes}
               onChange={(e) => setTeachingMethodNotes(e.target.value)}
             />
           </FormField>
-          <FormField label="Додаткова інформація">
+          <FormField label="Дополнительная информация">
             <Textarea value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} />
           </FormField>
           <FormField label="Предметы">

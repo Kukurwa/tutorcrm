@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import {
-  createUserSchema,
-  type User,
-  type UserPublic,
-} from '@tutorcrm/contracts';
+import { createUserSchema, type User, type UserPublic } from '@tutorcrm/contracts';
 
 import { requireApiRole, requireApiSession } from '@/lib/api/guards';
 import { generateId, nowIso } from '@/lib/api/id';
@@ -47,6 +43,7 @@ export async function POST(req: Request) {
     name: parsed.data.name,
     role: parsed.data.role,
     status: 'active',
+    hireDate: null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };

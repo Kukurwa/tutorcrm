@@ -431,7 +431,7 @@ export function computeContractMetrics(args: {
     const mk = monthFromIso(c.paidAt);
     const monthKey = `${mk.year}-${String(mk.month).padStart(2, '0')}`;
     if (!monthKeys.includes(monthKey)) continue;
-    monthTotals[monthKey] += profit;
+    monthTotals[monthKey] = (monthTotals[monthKey] ?? 0) + profit;
     grandTotal += profit;
 
     if (c.subjectId) {
@@ -443,7 +443,7 @@ export function computeContractMetrics(args: {
           byMonth: blank(),
           total: 0,
         } satisfies ContractMetricRow);
-      e.byMonth[monthKey] += profit;
+      e.byMonth[monthKey] = (e.byMonth[monthKey] ?? 0) + profit;
       e.total += profit;
       bySubjectMap.set(c.subjectId, e);
     }
@@ -456,7 +456,7 @@ export function computeContractMetrics(args: {
           byMonth: blank(),
           total: 0,
         } satisfies ContractMetricRow);
-      e.byMonth[monthKey] += profit;
+      e.byMonth[monthKey] = (e.byMonth[monthKey] ?? 0) + profit;
       e.total += profit;
       byDispatcherMap.set(c.dispatcherId, e);
     }
@@ -470,7 +470,7 @@ export function computeContractMetrics(args: {
           byMonth: blank(),
           total: 0,
         } satisfies ContractMetricRow);
-      e.byMonth[monthKey] += profit;
+      e.byMonth[monthKey] = (e.byMonth[monthKey] ?? 0) + profit;
       e.total += profit;
       byTutorMap.set(key, e);
     }
@@ -544,7 +544,10 @@ export function computeProfitability(args: {
   const cutoff = new Date(now.getTime() - cutoffDays * 86_400_000);
 
   const lookupRegular = (subjectId: string | null): RegularPricing => {
-    if (subjectId && regularPricingBySubject[subjectId]) return regularPricingBySubject[subjectId];
+    if (subjectId) {
+      const override = regularPricingBySubject[subjectId];
+      if (override) return override;
+    }
     return regularPricing;
   };
 

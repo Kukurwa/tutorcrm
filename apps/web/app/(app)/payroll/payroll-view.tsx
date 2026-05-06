@@ -178,8 +178,11 @@ function RopScaleCard({
   // Меняем границу диапазона: правим row.to и .from следующей строки.
   function updateBoundary(idx: number, value: number) {
     const next = config.ropScale.map((r) => ({ ...r }));
-    next[idx].to = value;
-    if (idx + 1 < next.length) next[idx + 1].from = value + 1;
+    const cur = next[idx];
+    if (!cur) return;
+    cur.to = value;
+    const nxt = next[idx + 1];
+    if (nxt) nxt.from = value + 1;
     onChange(next);
   }
 
@@ -358,8 +361,11 @@ function DispatcherMatrixCard({
 
   function updateRangeBoundary(idx: number, value: number) {
     const next = config.dispatcherRanges.map((r) => ({ ...r }));
-    next[idx].to = value;
-    if (idx + 1 < next.length) next[idx + 1].from = value + 1;
+    const cur = next[idx];
+    if (!cur) return;
+    cur.to = value;
+    const nxt = next[idx + 1];
+    if (nxt) nxt.from = value + 1;
     onChange(config.dispatcherMatrix, next);
   }
 
@@ -420,7 +426,7 @@ function DispatcherMatrixCard({
                         )}
                       </div>
                     </td>
-                    {config.dispatcherMatrix[rowIdx].map((c, colIdx) => (
+                    {(config.dispatcherMatrix[rowIdx] ?? []).map((c, colIdx) => (
                       <td key={colIdx} className="py-2 pr-3">
                         <div className="flex items-center gap-1">
                           <Input
@@ -520,7 +526,10 @@ function DispatcherSalaryCard({
                 });
                 const months = tenureMonths(d.hireDate);
                 const bucket = tenureBucket(months);
-                const range = config.dispatcherRanges[s.rangeIndex];
+                const range = config.dispatcherRanges[s.rangeIndex] ?? {
+                  from: 0,
+                  to: null,
+                };
                 return (
                   <tr key={d.id} className="border-b last:border-0">
                     <td className="py-2 pr-3 font-medium">{d.name}</td>

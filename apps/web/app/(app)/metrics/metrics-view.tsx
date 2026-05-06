@@ -26,6 +26,7 @@ import type {
   SubjectRow,
   TrialRow,
 } from '@/lib/metrics/extended';
+import { currentMonthKey, formatMonthKey, parseMonthKey } from '@/lib/metrics/period';
 
 import { ContractsTab } from './tabs/contracts-tab';
 import { DispatchersTab } from './tabs/dispatchers-tab';
@@ -33,7 +34,6 @@ import { PlanFactTab } from './tabs/plan-fact-tab';
 import { ProfitTab } from './tabs/profit-tab';
 import { ProfitabilityTab } from './tabs/profitability-tab';
 import { RetentionTab } from './tabs/retention-tab';
-import { currentMonthKey, formatMonthKey, parseMonthKey } from '@/lib/metrics/period';
 
 interface Props {
   dispatchers: DispatcherRow[];

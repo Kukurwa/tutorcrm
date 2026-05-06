@@ -29,7 +29,7 @@ export interface MonthKey {
 
 export function parseMonthKey(value: string): MonthKey {
   const [y, m] = value.split('-').map(Number);
-  return { year: y, month: m };
+  return { year: y ?? 1970, month: m ?? 1 };
 }
 
 export function formatMonthKey({ year, month }: MonthKey): string {
@@ -95,7 +95,8 @@ function rangeContains(range: PayrollRange, value: number): boolean {
 
 export function findRangeIndex(ranges: PayrollRange[], value: number): number {
   for (let i = 0; i < ranges.length; i++) {
-    if (rangeContains(ranges[i], value)) return i;
+    const r = ranges[i];
+    if (r && rangeContains(r, value)) return i;
   }
   return ranges.length - 1;
 }
@@ -106,7 +107,7 @@ export function findRangeIndex(ranges: PayrollRange[], value: number): number {
 export function tenureMonths(hireDate: string | null, now: Date = new Date()): number {
   if (!hireDate) return 0;
   const [y, m, d] = hireDate.split('-').map(Number);
-  const hire = new Date(y, m - 1, d);
+  const hire = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
   const months = (now.getFullYear() - hire.getFullYear()) * 12 + (now.getMonth() - hire.getMonth());
   // если день месяца ещё не наступил — считается неполный месяц
   return now.getDate() < hire.getDate() ? months - 1 : months;
@@ -143,7 +144,8 @@ export function computeDispatcherSalary(args: {
   const months = tenureMonths(hireDate, now);
   const bucket = tenureBucket(months);
   const tenureIndex = TENURE_BUCKETS.indexOf(bucket);
-  const cell = config.dispatcherMatrix[rangeIndex][tenureIndex];
+  const matrixRow = config.dispatcherMatrix[rangeIndex];
+  const cell = matrixRow?.[tenureIndex] ?? { percent: 0, fixed: 0 };
   const percentPart = turnover > 0 ? Math.round((turnover * cell.percent) / 100) : 0;
   const fixedPart = turnover > 0 ? cell.fixed : 0;
   return {
@@ -174,9 +176,10 @@ export function computeRopBreakdown(args: {
   turnovers: DispatcherTurnover[];
 }): { rows: RopRowResult[]; total: number } {
   const { config, turnovers } = args;
+  const fallbackRow: PayrollRopRow = { from: 0, to: null, percent: 0, fixed: 0 };
   const rows = turnovers.map<RopRowResult>((t) => {
     const rangeIndex = findRangeIndex(config.ropScale, t.total);
-    const row = config.ropScale[rangeIndex];
+    const row = config.ropScale[rangeIndex] ?? fallbackRow;
     const percentPart = t.total > 0 ? Math.round((t.total * row.percent) / 100) : 0;
     const fixedPart = t.total > 0 ? row.fixed : 0;
     return {

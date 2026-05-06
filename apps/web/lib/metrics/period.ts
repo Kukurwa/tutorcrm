@@ -5,7 +5,7 @@ export interface MonthKey {
 
 export function parseMonthKey(value: string): MonthKey {
   const [y, m] = value.split('-').map(Number);
-  return { year: y, month: m };
+  return { year: y ?? 1970, month: m ?? 1 };
 }
 
 export function formatMonthKey({ year, month }: MonthKey): string {

@@ -14,13 +14,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   RoleBadge,
+  Separator,
+  SidebarTrigger,
   type Role,
 } from '@tutorcrm/ui';
 
-import { MobileSidebar } from './mobile-sidebar';
 import { NotificationBell } from './notification-bell';
 
-export interface TopbarProps {
+export interface AppHeaderProps {
   user: {
     name: string;
     email: string;
@@ -38,14 +39,13 @@ function initials(name: string): string {
     .toUpperCase();
 }
 
-export function Topbar({ user }: TopbarProps) {
+export function AppHeader({ user }: AppHeaderProps) {
   return (
-    <header className="bg-background flex h-14 items-center justify-between border-b px-3 sm:px-4">
-      <div className="text-muted-foreground flex items-center gap-2 text-sm">
-        <MobileSidebar role={user.role} />
-      </div>
+    <header className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
+      <SidebarTrigger className="-ml-1" />
+      <Separator orientation="vertical" className="mr-2 h-4" />
 
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2">
         <NotificationBell />
 
         <DropdownMenu>

@@ -38,7 +38,7 @@ export function PlanFactTab({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <KpiStat label="План (Н)" value={fmtMoney(data.total.plan)} accent="sky" />
         <KpiStat label="Факт (М)" value={fmtMoney(data.total.fact)} accent="emerald" />
         <KpiStat
@@ -58,8 +58,8 @@ export function PlanFactTab({
               Только заявки с конечным результатом
             </span>
           </div>
-          <div className="overflow-hidden rounded-md border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/40">
                 <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
                   <th className="px-3 py-2 font-medium">Предмет</th>

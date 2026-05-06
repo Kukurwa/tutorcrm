@@ -95,7 +95,7 @@ function BreakdownTable({
     <Card>
       <CardContent className="pt-6">
         <div className="overflow-x-auto rounded-md border">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-muted/40">
               <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
                 <th className="px-3 py-2 font-medium">Имя</th>

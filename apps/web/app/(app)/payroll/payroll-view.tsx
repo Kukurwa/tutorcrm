@@ -120,11 +120,11 @@ export function PayrollView({
       <div className="bg-background sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 px-1 pb-2">
         <Input
           type="month"
-          className="h-9 w-44"
+          className="h-9 w-full sm:w-44"
           value={monthValue}
           onChange={(e) => setMonthValue(e.target.value)}
         />
-        <span className="text-muted-foreground text-xs">
+        <span className="text-muted-foreground hidden text-xs lg:inline">
           Расчёт за выбранный месяц по фактическим оплатам и контракт-комиссиям
         </span>
       </div>
@@ -192,7 +192,7 @@ function SectionHeader({
   onSave: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-6 pb-3 pt-6">
+    <div className="flex items-center justify-between gap-3 px-3 pb-3 pt-6 sm:px-6">
       <div className="min-w-0">
         <h2 className="truncate text-base font-semibold">{title}</h2>
         {hint ? <p className="text-muted-foreground mt-0.5 text-xs">{hint}</p> : null}
@@ -229,9 +229,9 @@ function RopScaleTable({
   }
 
   return (
-    <div className="px-6 pb-6">
-      <div className="overflow-hidden rounded-md border">
-        <table className="w-full text-sm">
+    <div className="px-3 pb-6 sm:px-6">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full min-w-[480px] text-sm">
           <thead className="bg-muted/40">
             <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
               <th className="px-3 py-2 font-medium">Диапазон оборота, грн</th>
@@ -302,12 +302,12 @@ function RopBreakdown({
   const dispatcherById = useMemo(() => new Map(dispatchers.map((d) => [d.id, d])), [dispatchers]);
 
   return (
-    <CardContent className="space-y-3 pt-6">
+    <CardContent className="space-y-3 px-3 pt-6 sm:px-6">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Расчёт ЗП РОПа за период</h3>
       </div>
-      <div className="overflow-hidden rounded-md border">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-muted/40">
             <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
               <th className="px-3 py-2 font-medium">Диспетчер</th>
@@ -388,9 +388,66 @@ function DispatcherMatrix({
   }
 
   return (
-    <div className="px-6 pb-6">
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
+    <div className="px-3 pb-6 sm:px-6">
+      {/* Mobile: каждый диапазон — карточка с stacked-полями по стажу */}
+      <div className="space-y-3 lg:hidden">
+        {ranges.map((range, rowIdx) => {
+          const isLast = rowIdx === ranges.length - 1;
+          return (
+            <div key={rowIdx} className="rounded-md border p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-muted-foreground text-xs uppercase tracking-wide">
+                  Оборот, грн
+                </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-muted-foreground text-sm tabular-nums">
+                    {fmtInt(range.from)}
+                  </span>
+                  <span className="text-muted-foreground">–</span>
+                  {isLast ? (
+                    <span className="text-muted-foreground">+</span>
+                  ) : (
+                    <NumInput
+                      value={range.to ?? 0}
+                      onChange={(v) => updateBoundary(rowIdx, v)}
+                      className="w-28"
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="space-y-2">
+                {(matrix[rowIdx] ?? []).map((cell, colIdx) => (
+                  <div key={colIdx} className="flex items-center gap-2">
+                    <span className="text-muted-foreground w-20 text-xs">
+                      {TENURE_LABELS[TENURE_BUCKETS[colIdx]!]}
+                    </span>
+                    <NumInput
+                      value={cell.percent}
+                      onChange={(v) => updateCell(rowIdx, colIdx, { percent: v })}
+                      decimals={1}
+                      suffix="%"
+                      step={0.5}
+                      max={100}
+                      className="w-20"
+                    />
+                    <span className="text-muted-foreground text-xs">+</span>
+                    <NumInput
+                      value={cell.fixed}
+                      onChange={(v) => updateCell(rowIdx, colIdx, { fixed: v })}
+                      step={500}
+                      className="flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop (lg+): полноразмерная матрица 5×5 */}
+      <div className="hidden overflow-x-auto rounded-md border lg:block">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-muted/40">
             <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
               <th className="px-3 py-2 font-medium">Диапазон оборота, грн</th>
@@ -482,10 +539,10 @@ function DispatcherSalaries({
   const total = rows.reduce((sum, r) => sum + r.salary.total, 0);
 
   return (
-    <CardContent className="space-y-3 pt-6">
+    <CardContent className="space-y-3 px-3 pt-6 sm:px-6">
       <h3 className="text-sm font-medium">Расчёт ЗП диспетчеров за период</h3>
       <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-muted/40">
             <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
               <th className="px-3 py-2 font-medium">Диспетчер</th>

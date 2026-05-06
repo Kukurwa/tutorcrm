@@ -164,7 +164,7 @@ export function ProfitabilityTab({
         </Sheet>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiStat label="Учеников 45+" value={fmtInt(data.total.students)} accent="neutral" />
         <KpiStat
           label="Ожидаемый (обычн.)"
@@ -188,20 +188,97 @@ export function ProfitabilityTab({
       <Card>
         <CardContent className="pt-6">
           <h3 className="mb-3 text-sm font-medium">Контракт vs обычные — по репетиторам</h3>
-          <div className="overflow-x-auto rounded-md border">
-            <table className="w-full text-xs">
+
+          {/* Mobile: карточный layout */}
+          <div className="space-y-3 md:hidden">
+            {data.rows.length === 0 ? (
+              <p className="text-muted-foreground py-4 text-center text-sm">
+                Нет учеников старше cutoff. Уменьшите его в параметрах.
+              </p>
+            ) : (
+              data.rows.map((r) => (
+                <div key={r.tutorId} className="rounded-md border p-3 text-sm">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{r.tutorName}</div>
+                      <div className="text-muted-foreground text-xs">
+                        {r.subjectName ?? '—'} · {r.students} учеников · {r.avgRetentionDays} дн
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-base font-semibold tabular-nums">
+                        {fmtPercent(r.efficiency, 0)}
+                      </div>
+                      <div
+                        className={
+                          'text-xs tabular-nums ' +
+                          (r.delta >= 0 ? 'text-emerald-700' : 'text-rose-700')
+                        }
+                      >
+                        {fmtDelta(r.delta)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-muted-foreground mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span>Пробных 45+</span>
+                      <span className="text-foreground tabular-nums">{r.trials45plus}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Успех / Отказ</span>
+                      <span className="text-foreground tabular-nums">
+                        {r.successful} / {r.refused}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>1/2/3р</span>
+                      <span className="text-foreground tabular-nums">
+                        {r.freq1Pct}/{r.freq2Pct}/{r.freq3Pct}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Ср. цена</span>
+                      <span className="text-foreground tabular-nums">
+                        {fmtInt(r.avgRequestPrice)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Ожид. (обычн.)</span>
+                      <span className="text-foreground tabular-nums">
+                        {fmtMoney(r.expectedRegularIncome)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Факт (контракт)</span>
+                      <span className="text-foreground font-medium tabular-nums">
+                        {fmtMoney(r.actualContractIncome)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop: широкая таблица со скрываемыми второстепенными колонками */}
+          <div className="hidden overflow-x-auto rounded-md border md:block">
+            <table className="w-full min-w-[760px] text-xs">
               <thead className="bg-muted/40">
                 <tr className="text-muted-foreground text-left uppercase tracking-wide">
                   <th className="px-2 py-2 font-medium">Репетитор</th>
-                  <th className="px-2 py-2 font-medium">Предмет</th>
-                  <th className="px-2 py-2 text-right font-medium">Пробных&nbsp;45+</th>
-                  <th className="px-2 py-2 text-right font-medium">Успех</th>
-                  <th className="px-2 py-2 text-right font-medium">Отказ</th>
-                  <th className="px-2 py-2 text-right font-medium">Успех%</th>
+                  <th className="hidden px-2 py-2 font-medium lg:table-cell">Предмет</th>
+                  <th className="hidden px-2 py-2 text-right font-medium xl:table-cell">
+                    Пробных&nbsp;45+
+                  </th>
+                  <th className="hidden px-2 py-2 text-right font-medium xl:table-cell">Успех</th>
+                  <th className="hidden px-2 py-2 text-right font-medium xl:table-cell">Отказ</th>
+                  <th className="hidden px-2 py-2 text-right font-medium lg:table-cell">Успех%</th>
                   <th className="px-2 py-2 text-right font-medium">Учеников</th>
-                  <th className="px-2 py-2 text-right font-medium">Уд., дн</th>
-                  <th className="px-2 py-2 text-right font-medium">1/2/3р</th>
-                  <th className="px-2 py-2 text-right font-medium">Ср. цена</th>
+                  <th className="hidden px-2 py-2 text-right font-medium lg:table-cell">Уд., дн</th>
+                  <th className="hidden px-2 py-2 text-right font-medium xl:table-cell">1/2/3р</th>
+                  <th className="hidden px-2 py-2 text-right font-medium xl:table-cell">
+                    Ср. цена
+                  </th>
                   <th className="px-2 py-2 text-right font-medium">Ожид.</th>
                   <th className="px-2 py-2 text-right font-medium">Факт</th>
                   <th className="px-2 py-2 text-right font-medium">Δ</th>
@@ -219,21 +296,29 @@ export function ProfitabilityTab({
                   data.rows.map((r) => (
                     <tr key={r.tutorId} className="hover:bg-muted/20">
                       <td className="px-2 py-2 font-medium">{r.tutorName}</td>
-                      <td className="text-muted-foreground px-2 py-2">{r.subjectName ?? '—'}</td>
-                      <td className="px-2 py-2 text-right tabular-nums">{r.trials45plus}</td>
-                      <td className="px-2 py-2 text-right tabular-nums">{r.successful}</td>
-                      <td className="px-2 py-2 text-right tabular-nums">{r.refused}</td>
-                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                      <td className="text-muted-foreground hidden px-2 py-2 lg:table-cell">
+                        {r.subjectName ?? '—'}
+                      </td>
+                      <td className="hidden px-2 py-2 text-right tabular-nums xl:table-cell">
+                        {r.trials45plus}
+                      </td>
+                      <td className="hidden px-2 py-2 text-right tabular-nums xl:table-cell">
+                        {r.successful}
+                      </td>
+                      <td className="hidden px-2 py-2 text-right tabular-nums xl:table-cell">
+                        {r.refused}
+                      </td>
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right tabular-nums lg:table-cell">
                         {fmtPercent(r.successRate, 0)}
                       </td>
                       <td className="px-2 py-2 text-right tabular-nums">{r.students}</td>
-                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right tabular-nums lg:table-cell">
                         {r.avgRetentionDays}
                       </td>
-                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right tabular-nums xl:table-cell">
                         {r.freq1Pct}/{r.freq2Pct}/{r.freq3Pct}
                       </td>
-                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                      <td className="text-muted-foreground hidden px-2 py-2 text-right tabular-nums xl:table-cell">
                         {fmtInt(r.avgRequestPrice)}
                       </td>
                       <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
@@ -254,35 +339,6 @@ export function ProfitabilityTab({
                   ))
                 )}
               </tbody>
-              {data.rows.length > 0 ? (
-                <tfoot className="bg-muted/30">
-                  <tr>
-                    <td className="px-2 py-2.5 font-semibold" colSpan={6}>
-                      ИТОГО
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
-                      {fmtInt(data.total.students)}
-                    </td>
-                    <td className="px-2 py-2.5" colSpan={3} />
-                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
-                      {fmtMoney(data.total.expectedRegularIncome)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
-                      {fmtMoney(data.total.actualContractIncome)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
-                      <span
-                        className={data.total.delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}
-                      >
-                        {fmtDelta(data.total.delta)}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-bold tabular-nums">
-                      {fmtPercent(data.total.efficiency, 0)}
-                    </td>
-                  </tr>
-                </tfoot>
-              ) : null}
             </table>
           </div>
         </CardContent>

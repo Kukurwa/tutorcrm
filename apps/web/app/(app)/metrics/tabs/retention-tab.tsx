@@ -62,7 +62,7 @@ export function RetentionTab({
                 {monthLabel(m)}
               </h4>
               <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-xs">
+                <table className="w-full min-w-[720px] text-xs">
                   <thead className="bg-muted/40">
                     <tr className="text-muted-foreground text-left uppercase tracking-wide">
                       <th className="px-2 py-2 font-medium">Предмет</th>

@@ -62,25 +62,27 @@ export function MetricsView({
       <div className="bg-background sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 px-1 pb-2">
         <Input
           type="month"
-          className="h-9 w-44"
+          className="h-9 w-full sm:w-44"
           value={monthValue}
           onChange={(e) => setMonthValue(e.target.value)}
         />
-        <span className="text-muted-foreground text-xs">
+        <span className="text-muted-foreground hidden text-xs lg:inline">
           «Контрактные» — последние 6 мес, «Удержание» — последние 4 мес, остальное — за выбранный
           месяц
         </span>
       </div>
 
       <Tabs defaultValue="profit" className="space-y-4">
-        <TabsList className="h-auto flex-wrap justify-start">
-          <TabsTrigger value="profit">Прибыль</TabsTrigger>
-          <TabsTrigger value="plan-fact">План / Факт</TabsTrigger>
-          <TabsTrigger value="contracts">Контрактные</TabsTrigger>
-          <TabsTrigger value="profitability">Рентабельность</TabsTrigger>
-          <TabsTrigger value="retention">Удержание</TabsTrigger>
-          <TabsTrigger value="dispatchers">Диспетчеры</TabsTrigger>
-        </TabsList>
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <TabsList className="w-max">
+            <TabsTrigger value="profit">Прибыль</TabsTrigger>
+            <TabsTrigger value="plan-fact">План / Факт</TabsTrigger>
+            <TabsTrigger value="contracts">Контрактные</TabsTrigger>
+            <TabsTrigger value="profitability">Рентабельность</TabsTrigger>
+            <TabsTrigger value="retention">Удержание</TabsTrigger>
+            <TabsTrigger value="dispatchers">Диспетчеры</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="profit">
           <ProfitTab

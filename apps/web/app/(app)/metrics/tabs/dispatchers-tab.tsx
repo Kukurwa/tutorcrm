@@ -74,8 +74,8 @@ export function DispatchersTab({
               response» / «tutor found» отметки появятся на бэке.
             </p>
           </div>
-          <div className="overflow-hidden rounded-md border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-muted/40">
                 <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
                   <th className="px-3 py-2 font-medium">Диспетчер</th>

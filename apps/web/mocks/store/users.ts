@@ -8,7 +8,7 @@ const seed: User[] = [
   {
     id: 'user_admin',
     email: 'admin@tutorcrm.local',
-    name: 'Семён Толкачёв',
+    name: 'Admin',
     role: 'admin',
     status: 'active',
     hireDate: null,

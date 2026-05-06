@@ -169,17 +169,25 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                 icon={ShieldCheck}
                 title="Активные контракты"
                 value={data.operations.activeContracts}
+                tone="emerald"
               />
               <MetricTile
                 icon={Inbox}
                 title="Непрочитанные диалоги"
                 value={data.operations.unreadDialogs}
+                tone="amber"
               />
-              <MetricTile icon={Sprout} title="Новые лиды" value={data.operations.newLeads} />
+              <MetricTile
+                icon={Sprout}
+                title="Новые лиды"
+                value={data.operations.newLeads}
+                tone="sky"
+              />
               <MetricTile
                 icon={AlertTriangle}
                 title="Просроченные задачи"
                 value={data.operations.overdueTasks}
+                tone="rose"
               />
             </div>
           </div>
@@ -193,21 +201,25 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
                 icon={Banknote}
                 title="Выставлено клиентам"
                 value={formatCurrency(data.finance.totalInvoicedClient)}
+                tone="indigo"
               />
               <MetricTile
                 icon={Wallet}
                 title="Оплачено клиентами"
                 value={formatCurrency(data.finance.totalPaidClient)}
+                tone="emerald"
               />
               <MetricTile
                 icon={TrendingUp}
                 title="Комиссия (прогноз)"
                 value={formatCurrency(Math.round(data.finance.totalCommissionProjected))}
+                tone="violet"
               />
               <MetricTile
                 icon={Clock}
                 title="Просроченные инвойсы"
                 value={data.finance.overdueInvoices}
+                tone="rose"
               />
             </div>
           </div>
@@ -335,20 +347,35 @@ export function DashboardView({ subjects, dispatchers, showDispatcherFilter }: P
   );
 }
 
+type Tone = 'emerald' | 'amber' | 'sky' | 'rose' | 'indigo' | 'violet';
+
+const TONE_STYLES: Record<Tone, string> = {
+  emerald: 'bg-emerald-100 text-emerald-600',
+  amber: 'bg-amber-100 text-amber-600',
+  sky: 'bg-sky-100 text-sky-600',
+  rose: 'bg-rose-100 text-rose-600',
+  indigo: 'bg-indigo-100 text-indigo-600',
+  violet: 'bg-violet-100 text-violet-600',
+};
+
 function MetricTile({
   icon: Icon,
   title,
   value,
+  tone = 'sky',
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   value: number | string;
+  tone?: Tone;
 }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <div className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-md border">
-          <Icon className="h-4 w-4" />
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${TONE_STYLES[tone]}`}
+        >
+          <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-muted-foreground text-xs">{title}</div>

@@ -91,9 +91,9 @@ export function UsersList({ initial }: { initial: UserPublic[] }) {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="dispatcher">Dispatcher</SelectItem>
-                    <SelectItem value="leadgen">LeadGen</SelectItem>
+                    <SelectItem value="admin">Администратор</SelectItem>
+                    <SelectItem value="dispatcher">Диспетчер</SelectItem>
+                    <SelectItem value="leadgen">Лидген</SelectItem>
                   </SelectContent>
                 </Select>
               ),
@@ -180,9 +180,9 @@ function CreateUserDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="dispatcher">Dispatcher</SelectItem>
-                <SelectItem value="leadgen">LeadGen</SelectItem>
+                <SelectItem value="admin">Администратор</SelectItem>
+                <SelectItem value="dispatcher">Диспетчер</SelectItem>
+                <SelectItem value="leadgen">Лидген</SelectItem>
               </SelectContent>
             </Select>
           </FormField>

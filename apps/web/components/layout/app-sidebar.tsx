@@ -42,7 +42,11 @@ export function AppSidebar({ role }: Props) {
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">TutorCRM</span>
                   <span className="text-sidebar-foreground/70 truncate text-xs">
-                    {role === 'admin' ? 'Admin' : role === 'dispatcher' ? 'Dispatcher' : 'LeadGen'}
+                    {role === 'admin'
+                      ? 'Администратор'
+                      : role === 'dispatcher'
+                        ? 'Диспетчер'
+                        : 'Лидген'}
                   </span>
                 </div>
               </Link>

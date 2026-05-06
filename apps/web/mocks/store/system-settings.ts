@@ -11,6 +11,14 @@ let settings: SystemSettings = {
     auto_generate_invoices_weekly: true,
     auto_mark_overdue_invoices: true,
   },
+  // Прайс «обычных» условий (PDF: 1р=800, 2р=1400, 3р=2000)
+  regularPricing: {
+    onePerWeek: 800,
+    twoPerWeek: 1400,
+    threePerWeek: 2000,
+  },
+  regularPricingBySubject: {},
+  profitabilityCutoffDays: 45,
 };
 
 export function getSystemSettings(): SystemSettings {
@@ -22,6 +30,8 @@ export function updateSystemSettings(patch: UpdateSystemSettingsRequest): System
     ...settings,
     ...patch,
     autoActions: { ...settings.autoActions, ...(patch.autoActions ?? {}) },
+    regularPricing: patch.regularPricing ?? settings.regularPricing,
+    regularPricingBySubject: patch.regularPricingBySubject ?? settings.regularPricingBySubject,
   };
   return settings;
 }

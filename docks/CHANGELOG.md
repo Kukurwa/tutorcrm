@@ -12,6 +12,67 @@
 
 ---
 
+### 2026-05-06 — FE-Payroll (ч. 2): раздел «Метрики» — 6 расширенных метрик из PDF клиента
+
+**Контракты:**
+- `SystemSettings` дополнен `regularPricing` (1р/2р/3р per week — глобальный прайс «обычных»), `regularPricingBySubject` (override по предмету), `profitabilityCutoffDays` (по умолчанию 45). Схема `regularPricingSchema` экспортируется отдельно.
+
+**Чистые расчёты ([apps/web/lib/metrics/extended.ts](apps/web/lib/metrics/extended.ts) + [period.ts](apps/web/lib/metrics/period.ts)):**
+- `computeProfit` — прибыль за месяц: контракт-комиссии + разовые, разрез по диспетчерам.
+- `computePlanFact` — заявки с терминальным `stage` (closed_won/closed_lost) в месяце; План = Σ requestPrice, Факт = Σ requestPrice по closed_won, разбивка cell × cell (subject × dispatcher), агрегаты по диспетчерам и предметам, причины отказов с lostSum.
+- `computeContractMetrics` — последние 6 месяцев × {subject | dispatcher | tutor}, прибыль = `amountReceived × commissionRate` сгруппировано по `paidAt`-month.
+- `computeProfitability` — по каждому репетитору (контракты со `startedAt ≤ cutoff`): trials45+, success/refused/successRate, students, avgRetentionDays, частоты 1/2/3р, avgRequestPrice, expectedRegularIncome (по таблице 1р/2р/3р per subject), actualContractIncome, Δ, efficiency.
+- `computeRetention` — по месяцам × subject: trials, successful, %, droppedThis (closed_lost в этом месяце с startedAt в этом же месяце), droppedLast/Prev/3+ по `monthsDiff(closedMonth, startedMonth)`.
+- `computeDispatcherStats` — за период [from..to]: лиды/заявки/успешные/отказные, byStage, причины отказов, успешность %, SLA первого ответа (≈updatedAt − createdAt диалога) и SLA поиска репа (для заявок с assignedTutorId).
+
+**Страница `/metrics` (admin):**
+- `page.tsx` — RSC, тянет contracts/requests/oneTimePayments/trials/subjects/reasons/dialogs/leads/users + system-settings.
+- `metrics-view.tsx` — общий month-picker, Tabs из 6 вкладок.
+- `tabs/profit-tab.tsx` — 3 KPI (контракт/разовые/итого) + таблица «По диспетчерам».
+- `tabs/plan-fact-tab.tsx` — 3 KPI (План/Факт/Успешность с Δ), большая cell-таблица subject × dispatcher, два side-by-side aggregate (по диспетчерам / по предметам), таблица причин отказов с потерянной суммой.
+- `tabs/contracts-tab.tsx` — фиксированный период «последние 6 месяцев», 6-карточная сводка month-totals + sub-Tabs (subject / dispatcher / tutor) с колонками-месяцами.
+- `tabs/profitability-tab.tsx` — inline-настройки `cutoffDays` и `regularPricing` с кнопкой «Сохранить» (PUT `/api/system-settings`); 4 KPI (учеников/ожид./факт/Δ-эфф.); большая таблица 14 колонок по репетиторам с подкраской Δ (emerald/rose).
+- `tabs/retention-tab.tsx` — для последних 4 месяцев секции с подзаголовками-месяцами, в каждой — таблица предмет × {trials/successful/%/droppedThis/%-этих/Last/Prev/3+/итого}.
+- `tabs/dispatchers-tab.tsx` — общая таблица с SLA + per-dispatcher карточки (лидов по этапам — Badge-чипы; причины отказов — список).
+
+**Моки:**
+- `req_4` (Дмитрий Зайцев / физика / Наталья) переведён в `closed_lost` с reason `rej_noanswer`, `requestPrice: '1500'`, `updatedAt = daysAgo(5)`.
+- `req_6` (Сергей Мельник / физика / Маргарита) — `closed_lost` с reason `rej_price`, `updatedAt = daysAgo(4)`.
+- `req_12` (Николай Иванов / нидерландский / Маргарита) — `updatedAt = daysAgo(2)`, чтобы closed_won попал в текущий месяц.
+- `con_7` — новый `closed_lost` контракт (Виктор Кравченко / английский / Игорь Петренко / Елена-диспетчер): `startedAt = daysAgo(90)`, `closedAt = daysAgo(4)` — для ретеншна и рентабельности.
+- `con_8` — новый `closed_lost` контракт (Артём Петренко / английский / Мария Раделицкая / Маргарита): `startedAt = daysAgo(32)`, `closedAt = daysAgo(2)` — отпавший в текущем месяце.
+
+**Навигация:** пункт «Метрики» (icon `BarChart3`) для роли `admin` сразу после «Дашборда».
+
+### 2026-05-06 — FE-Payroll: раздел «Зарплаты» (РОП + диспетчеры) на моках
+
+**Контракты:**
+- `packages/contracts/src/payroll.ts`: `PayrollRange`, `PayrollRopRow`, `PayrollDispatcherCell`, `TenureBucket` (`lt6`/`gte6`/`gte12`/`gte36`/`gte48`) + `TENURE_LABELS`, `PayrollConfig` (ropScale[5], dispatcherRanges[5], dispatcherMatrix[5×5], updatedAt), `updatePayrollConfigSchema`. Экспорт через `index.ts`.
+- `User` расширен полем `hireDate: 'YYYY-MM-DD' | null` для расчёта стажа диспетчера.
+
+**Моки:**
+- `apps/web/mocks/store/payroll-config.ts` — in-memory конфиг с дефолтами **из PDF клиента**: РОП 5%/2000 → 7%/4000 по 5 диапазонам (0–25k / 25k–50k / 50k–75k / 75k–100k / 100k+), матрица диспетчеров 5×5 (10%+4500 → 17%+2000) с прогрессией по стажу в верхних диапазонах.
+- В `users.ts` диспетчерам проставлены даты найма для покрытия 4 из 5 tenure-веток (Наталья — 4+ года, Маргарита — 3+ года, Ирина — 12+ мес, Елена — < 6 мес).
+- В `contracts.ts` пара `paidAt` сдвинута в текущий месяц + один `OneTimeDealPayment` помечен `paid` для демонстрации оборота.
+
+**API:**
+- `GET/PATCH /api/payroll/config` (admin-only) — чтение и точечная правка шкалы/матрицы/диапазонов.
+
+**Расчёт (`apps/web/lib/payroll/calc.ts`):**
+- `computeDispatcherTurnovers`: оборот = сумма комиссий контрактов (`amountReceived × commissionRate`), оплаченных в выбранном месяце + сумма `OneTimeDealPayment` со статусом `paid` и `paidAt` в этом же месяце, сгруппировано по `dispatcherId` через `request.dispatcherId` для разовых.
+- `tenureMonths` (полные месяцы от `hireDate`) → `tenureBucket` по правилам PDF (0–6 / 6–12 / 12–36 / 36–48 / 48+).
+- `computeDispatcherSalary`: ЗП = оборот × % + фикс. ставка из ячейки матрицы по (диапазон, стаж). Фикс. ставка применяется только при оборот > 0.
+- `computeRopBreakdown`: по каждому диспетчеру — диапазон оборота из шкалы РОПа, % × оборот + ставка. Итог = Σ.
+
+**UI `/payroll` (admin):**
+- `PageHeader` + пикер месяца (`<Input type="month">`), Tabs «ЗП РОПа» / «ЗП диспетчеров».
+- Вкладка РОПа: редактируемая шкала 5 диапазонов (правка верхней границы → автокоррекция нижней следующего диапазона; %/ставка inline) + таблица расчёта по каждому диспетчеру (оборот / % / ставка / % × оборот / итого) + строка ИТОГО.
+- Вкладка диспетчеров: матрица 5×5 (`%` + фикс. в каждой ячейке, диапазоны строк редактируются) + расчётная таблица (контракт-комиссии / разовые / оборот / выбранная ячейка / разбивка на части / итого) + строка ИТОГО.
+- Кнопки «Сохранить» в обоих карточках — отправляют PATCH на `/api/payroll/config`.
+
+**Навигация:**
+- Пункт меню «Зарплаты» (icon: `Wallet`) для роли `admin` между «Пользователями» и «Скриптами».
+
 ### 2026-04-30 — Большая партия UX-правок по фидбеку клиента (Inbox, Заявки, Контракты, Клиенты, Репетиторы, Лидген)
 
 **Модель данных (zod-контракты):**

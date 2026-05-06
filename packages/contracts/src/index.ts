@@ -13,3 +13,4 @@ export * from './contracts';
 export * from './tasks';
 export * from './invoices';
 export * from './notifications';
+export * from './payroll';

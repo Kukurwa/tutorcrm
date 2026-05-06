@@ -114,7 +114,7 @@ export function FunnelBoard({
     setDragId(null);
     if (req.stage === stage.kind) return;
     if (!canTransition(req.stage, stage.kind)) {
-      toast.error('Переход запрещён state machine');
+      toast.error('Переход запрещён правилами воронки');
       return;
     }
     if (requiresRejectionReason(stage.kind) || requiresTutor(stage.kind)) {

@@ -22,3 +22,4 @@ export {
 export { tasksStore, calendarEventsStore } from './tasks';
 export { invoicesStore, invoiceEventsStore } from './invoices';
 export { notificationsStore } from './notifications';
+export { getPayrollConfig, updatePayrollConfig } from './payroll-config';

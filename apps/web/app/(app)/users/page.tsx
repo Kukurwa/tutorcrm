@@ -16,7 +16,7 @@ export default async function UsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Пользователи"
-        description="Admin / Dispatcher / LeadGen. Только admin управляет этим разделом."
+        description="Администратор / Диспетчер / Лидген. Только администратор управляет этим разделом."
       />
       <UsersList
         initial={users

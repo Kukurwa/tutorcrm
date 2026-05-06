@@ -132,11 +132,11 @@ export function ContextPanel({ dialog, subjects, stages, onDialogUpdated }: Prop
           </div>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          <Row label="Client ID" value={dialog.clientId ?? '—'} />
-          <Row label="Lead ID" value={dialog.leadId ?? '—'} />
-          <Row label="Request ID" value={dialog.requestId ?? '—'} />
-          <Row label="Dispatcher" value={dialog.dispatcherId ?? '—'} />
-          <Row label="External ID" value={dialog.externalId} />
+          <Row label="ID клиента" value={dialog.clientId ?? '—'} />
+          <Row label="ID лида" value={dialog.leadId ?? '—'} />
+          <Row label="ID заявки" value={dialog.requestId ?? '—'} />
+          <Row label="Диспетчер" value={dialog.dispatcherId ?? '—'} />
+          <Row label="Внешний ID" value={dialog.externalId} />
         </CardContent>
       </Card>
 
@@ -380,7 +380,7 @@ function CreateRequestFromDialogModal({
         <DialogHeader>
           <DialogTitle>Сформировать заявку из диалога</DialogTitle>
           <DialogDescription>
-            Все поля необязательные. В ценах можно указать «Договірна».
+            Все поля необязательные. В ценах можно указать «Договорная».
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -433,10 +433,10 @@ function CreateRequestFromDialogModal({
             <Input value={schedule} onChange={(e) => setSchedule(e.target.value)} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Цена в час" description="Число или «Договірна»">
+            <FormField label="Цена в час" description="Число или «Договорная»">
               <Input value={pricePerHour} onChange={(e) => setPricePerHour(e.target.value)} />
             </FormField>
-            <FormField label="Цена заявки" description="Число или «Договірна»">
+            <FormField label="Цена заявки" description="Число или «Договорная»">
               <Input value={requestPrice} onChange={(e) => setRequestPrice(e.target.value)} />
             </FormField>
           </div>

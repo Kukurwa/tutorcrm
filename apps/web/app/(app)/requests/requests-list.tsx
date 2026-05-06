@@ -330,7 +330,7 @@ function CreateRequestDialog({
         <DialogHeader>
           <DialogTitle>Новая заявка</DialogTitle>
           <DialogDescription>
-            Все поля кроме клиента — необязательные. В ценах можно ввести «Договірна».
+            Все поля кроме клиента — необязательные. В ценах можно ввести «Договорная».
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
@@ -397,18 +397,18 @@ function CreateRequestDialog({
             <Input value={schedule} onChange={(e) => setSchedule(e.target.value)} />
           </FormField>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Цена в час" description="Число или «Договірна»">
+            <FormField label="Цена в час" description="Число или «Договорная»">
               <Input
                 value={pricePerHour}
                 onChange={(e) => setPricePerHour(e.target.value)}
-                placeholder="500 или Договірна"
+                placeholder="500 или Договорная"
               />
             </FormField>
-            <FormField label="Цена заявки" description="Число или «Договірна»">
+            <FormField label="Цена заявки" description="Число или «Договорная»">
               <Input
                 value={requestPrice}
                 onChange={(e) => setRequestPrice(e.target.value)}
-                placeholder="1500 или Договірна"
+                placeholder="1500 или Договорная"
               />
             </FormField>
           </div>

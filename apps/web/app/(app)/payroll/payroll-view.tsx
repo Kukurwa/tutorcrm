@@ -1,21 +1,21 @@
 'use client';
 
+import { Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type {
   PayrollConfig,
   PayrollDispatcherCell,
-  PayrollRopRow,
   PayrollRange,
+  PayrollRopRow,
 } from '@tutorcrm/contracts';
 import { TENURE_BUCKETS, TENURE_LABELS } from '@tutorcrm/contracts';
 import {
   Button,
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
   Input,
+  Separator,
   Tabs,
   TabsContent,
   TabsList,
@@ -23,7 +23,9 @@ import {
   toast,
 } from '@tutorcrm/ui';
 
+import { NumInput } from '@/components/ui/num-input';
 import { api, ApiClientError } from '@/lib/api-client';
+import { fmtInt, fmtMoney } from '@/lib/format-num';
 import {
   computeDispatcherSalary,
   computeDispatcherTurnovers,
@@ -69,8 +71,6 @@ interface Props {
   requests: RequestRow[];
 }
 
-const fmtMoney = (n: number) => `${n.toLocaleString('ru-RU')} грн`;
-
 export function PayrollView({
   initialConfig,
   dispatchers,
@@ -79,6 +79,7 @@ export function PayrollView({
   requests,
 }: Props) {
   const [config, setConfig] = useState<PayrollConfig>(initialConfig);
+  const [savedConfig, setSavedConfig] = useState<PayrollConfig>(initialConfig);
   const [monthValue, setMonthValue] = useState<string>(formatMonthKey(currentMonthKey()));
 
   const month = useMemo(() => parseMonthKey(monthValue), [monthValue]);
@@ -95,89 +96,130 @@ export function PayrollView({
     [dispatchers, contracts, oneTimePayments, requests, month],
   );
 
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Период</CardTitle>
-          <Input
-            type="month"
-            className="h-9 w-44"
-            value={monthValue}
-            onChange={(e) => setMonthValue(e.target.value)}
-          />
-        </CardHeader>
-      </Card>
+  const ropDirty = config.ropScale !== savedConfig.ropScale;
+  const matrixDirty =
+    config.dispatcherMatrix !== savedConfig.dispatcherMatrix ||
+    config.dispatcherRanges !== savedConfig.dispatcherRanges;
 
-      <Tabs defaultValue="rop">
+  async function save(
+    patch: Partial<Pick<PayrollConfig, 'ropScale' | 'dispatcherRanges' | 'dispatcherMatrix'>>,
+  ) {
+    try {
+      const res = await api.patch<{ config: PayrollConfig }>('/api/payroll/config', patch);
+      setConfig(res.config);
+      setSavedConfig(res.config);
+      toast.success('Сохранено');
+    } catch (err) {
+      toast.error(err instanceof ApiClientError ? err.message : 'Ошибка сохранения');
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar: пикер месяца + tabs справа */}
+      <div className="bg-background sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 px-1 pb-2">
+        <Input
+          type="month"
+          className="h-9 w-44"
+          value={monthValue}
+          onChange={(e) => setMonthValue(e.target.value)}
+        />
+        <span className="text-muted-foreground text-xs">
+          Расчёт за выбранный месяц по фактическим оплатам и контракт-комиссиям
+        </span>
+      </div>
+
+      <Tabs defaultValue="rop" className="space-y-4">
         <TabsList>
           <TabsTrigger value="rop">ЗП РОПа</TabsTrigger>
           <TabsTrigger value="dispatcher">ЗП диспетчеров</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="rop" className="space-y-4">
-          <RopScaleCard
-            config={config}
-            onChange={(ropScale) => setConfig((c) => ({ ...c, ropScale }))}
-            dispatcherRanges={config.dispatcherRanges}
-            onSave={(ropScale) => saveConfig(setConfig, { ropScale })}
-          />
-          <RopBreakdownCard config={config} dispatchers={dispatchers} turnovers={turnovers} />
+        <TabsContent value="rop">
+          <Card>
+            <SectionHeader
+              title="Прогрессивная шкала"
+              hint="ЗП = Σ (оборот × % + фикс. ставка) по диспетчерам с оборотом > 0"
+              dirty={ropDirty}
+              onSave={() => save({ ropScale: config.ropScale })}
+            />
+            <RopScaleTable
+              rows={config.ropScale}
+              onChange={(rows) => setConfig((c) => ({ ...c, ropScale: rows }))}
+            />
+            <Separator />
+            <RopBreakdown config={config} dispatchers={dispatchers} turnovers={turnovers} />
+          </Card>
         </TabsContent>
 
-        <TabsContent value="dispatcher" className="space-y-4">
-          <DispatcherMatrixCard
-            config={config}
-            onChange={(matrix, ranges) =>
-              setConfig((c) => ({
-                ...c,
-                dispatcherMatrix: matrix,
-                dispatcherRanges: ranges ?? c.dispatcherRanges,
-              }))
-            }
-            onSave={(payload) => saveConfig(setConfig, payload)}
-          />
-          <DispatcherSalaryCard config={config} dispatchers={dispatchers} turnovers={turnovers} />
+        <TabsContent value="dispatcher">
+          <Card>
+            <SectionHeader
+              title="Матрица диспетчеров"
+              hint="Строки — диапазон оборота, колонки — стаж работы"
+              dirty={matrixDirty}
+              onSave={() =>
+                save({
+                  dispatcherMatrix: config.dispatcherMatrix,
+                  dispatcherRanges: config.dispatcherRanges,
+                })
+              }
+            />
+            <DispatcherMatrix
+              ranges={config.dispatcherRanges}
+              matrix={config.dispatcherMatrix}
+              onChangeRanges={(ranges) => setConfig((c) => ({ ...c, dispatcherRanges: ranges }))}
+              onChangeMatrix={(matrix) => setConfig((c) => ({ ...c, dispatcherMatrix: matrix }))}
+            />
+            <Separator />
+            <DispatcherSalaries config={config} dispatchers={dispatchers} turnovers={turnovers} />
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-async function saveConfig(
-  setConfig: (updater: (prev: PayrollConfig) => PayrollConfig) => void,
-  patch: Partial<Pick<PayrollConfig, 'ropScale' | 'dispatcherRanges' | 'dispatcherMatrix'>>,
-) {
-  try {
-    const res = await api.patch<{ config: PayrollConfig }>('/api/payroll/config', patch);
-    setConfig(() => res.config);
-    toast.success('Сохранено');
-  } catch (err) {
-    toast.error(err instanceof ApiClientError ? err.message : 'Ошибка сохранения');
-  }
-}
-
-// =================== РОП ===================
-
-function RopScaleCard({
-  config,
-  onChange,
-  dispatcherRanges,
+function SectionHeader({
+  title,
+  hint,
+  dirty,
   onSave,
 }: {
-  config: PayrollConfig;
+  title: string;
+  hint?: string;
+  dirty: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-6 pb-3 pt-6">
+      <div className="min-w-0">
+        <h2 className="truncate text-base font-semibold">{title}</h2>
+        {hint ? <p className="text-muted-foreground mt-0.5 text-xs">{hint}</p> : null}
+      </div>
+      <Button size="sm" variant={dirty ? 'default' : 'outline'} disabled={!dirty} onClick={onSave}>
+        <Save className="mr-1.5 h-3.5 w-3.5" />
+        {dirty ? 'Сохранить' : 'Сохранено'}
+      </Button>
+    </div>
+  );
+}
+
+// =================== РОП: шкала + расчёт ===================
+
+function RopScaleTable({
+  rows,
+  onChange,
+}: {
+  rows: PayrollRopRow[];
   onChange: (rows: PayrollRopRow[]) => void;
-  dispatcherRanges: PayrollRange[];
-  onSave: (rows: PayrollRopRow[]) => void;
 }) {
   function update(idx: number, patch: Partial<PayrollRopRow>) {
-    const next = config.ropScale.map((r, i) => (i === idx ? { ...r, ...patch } : r));
-    onChange(next);
+    onChange(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
   }
 
-  // Меняем границу диапазона: правим row.to и .from следующей строки.
   function updateBoundary(idx: number, value: number) {
-    const next = config.ropScale.map((r) => ({ ...r }));
+    const next = rows.map((r) => ({ ...r }));
     const cur = next[idx];
     if (!cur) return;
     cur.to = value;
@@ -186,96 +228,68 @@ function RopScaleCard({
     onChange(next);
   }
 
-  const rangesDiverge = useMemo(
-    () =>
-      config.ropScale.some((r, i) => {
-        const dr = dispatcherRanges[i];
-        return !dr || r.from !== dr.from || r.to !== dr.to;
-      }),
-    [config.ropScale, dispatcherRanges],
-  );
-
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <div>
-          <CardTitle className="text-base">Прогрессивная шкала РОПа</CardTitle>
-          <p className="text-muted-foreground text-xs">
-            ЗП РОПа = Σ (оборот диспетчера × % + фикс. ставка) по диспетчерам с оборотом &gt; 0.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => onSave(config.ropScale)}>
-          Сохранить
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="text-muted-foreground text-left text-xs uppercase">
-                <th className="py-2 pr-3 font-medium">Диапазон оборота, грн</th>
-                <th className="py-2 pr-3 font-medium">% с оборота</th>
-                <th className="py-2 font-medium">Фикс. ставка</th>
-              </tr>
-            </thead>
-            <tbody>
-              {config.ropScale.map((row, idx) => {
-                const isLast = idx === config.ropScale.length - 1;
-                return (
-                  <tr key={idx} className="border-b last:border-0">
-                    <td className="py-2 pr-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground tabular-nums">
-                          {row.from.toLocaleString('ru-RU')}
-                        </span>
-                        <span className="text-muted-foreground">–</span>
-                        {isLast ? (
-                          <span className="text-muted-foreground">+</span>
-                        ) : (
-                          <Input
-                            type="number"
-                            className="h-8 w-32 tabular-nums"
-                            value={row.to ?? 0}
-                            onChange={(e) => updateBoundary(idx, Number(e.target.value) || 0)}
-                          />
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <Input
-                        type="number"
-                        step="0.1"
-                        className="h-8 w-24 tabular-nums"
-                        value={row.percent}
-                        onChange={(e) => update(idx, { percent: Number(e.target.value) || 0 })}
-                      />
-                    </td>
-                    <td className="py-2">
-                      <Input
-                        type="number"
-                        className="h-8 w-32 tabular-nums"
-                        value={row.fixed}
-                        onChange={(e) => update(idx, { fixed: Number(e.target.value) || 0 })}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {rangesDiverge ? (
-          <p className="text-muted-foreground mt-3 text-xs">
-            Подсказка: диапазоны РОПа отличаются от диапазонов матрицы диспетчеров. Это допустимо —
-            но обычно их держат синхронными.
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
+    <div className="px-6 pb-6">
+      <div className="overflow-hidden rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40">
+            <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
+              <th className="px-3 py-2 font-medium">Диапазон оборота, грн</th>
+              <th className="w-32 px-3 py-2 font-medium">% с оборота</th>
+              <th className="w-40 px-3 py-2 font-medium">Фикс. ставка</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {rows.map((row, idx) => {
+              const isLast = idx === rows.length - 1;
+              return (
+                <tr key={idx} className="hover:bg-muted/20">
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground w-20 text-right tabular-nums">
+                        {fmtInt(row.from)}
+                      </span>
+                      <span className="text-muted-foreground">–</span>
+                      {isLast ? (
+                        <span className="text-muted-foreground">+</span>
+                      ) : (
+                        <NumInput
+                          value={row.to ?? 0}
+                          onChange={(v) => updateBoundary(idx, v)}
+                          className="w-32"
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <NumInput
+                      value={row.percent}
+                      onChange={(v) => update(idx, { percent: v })}
+                      decimals={1}
+                      suffix="%"
+                      step={0.5}
+                      max={100}
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <NumInput
+                      value={row.fixed}
+                      onChange={(v) => update(idx, { fixed: v })}
+                      suffix="грн"
+                      step={500}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
-function RopBreakdownCard({
+function RopBreakdown({
   config,
   dispatchers,
   turnovers,
@@ -288,184 +302,160 @@ function RopBreakdownCard({
   const dispatcherById = useMemo(() => new Map(dispatchers.map((d) => [d.id, d])), [dispatchers]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Расчёт ЗП РОПа за период</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="text-muted-foreground text-left text-xs uppercase">
-                <th className="py-2 pr-3 font-medium">Диспетчер</th>
-                <th className="py-2 pr-3 text-right font-medium">Оборот</th>
-                <th className="py-2 pr-3 text-right font-medium">% по шкале</th>
-                <th className="py-2 pr-3 text-right font-medium">Ставка</th>
-                <th className="py-2 pr-3 text-right font-medium">% × оборот</th>
-                <th className="py-2 text-right font-medium">Итого</th>
-              </tr>
-            </thead>
-            <tbody>
-              {breakdown.rows.map((r) => (
-                <tr key={r.dispatcherId} className="border-b last:border-0">
-                  <td className="py-2 pr-3 font-medium">
-                    {dispatcherById.get(r.dispatcherId)?.name ?? r.dispatcherId}
-                  </td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{fmtMoney(r.turnover)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{r.row.percent}%</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{fmtMoney(r.fixedPart)}</td>
-                  <td className="py-2 pr-3 text-right tabular-nums">{fmtMoney(r.percentPart)}</td>
-                  <td className="py-2 text-right font-semibold tabular-nums">
-                    {fmtMoney(r.total)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2">
-                <td className="py-2 pr-3 font-semibold" colSpan={5}>
-                  ИТОГО ЗП РОПа
+    <CardContent className="space-y-3 pt-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Расчёт ЗП РОПа за период</h3>
+      </div>
+      <div className="overflow-hidden rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40">
+            <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
+              <th className="px-3 py-2 font-medium">Диспетчер</th>
+              <th className="px-3 py-2 text-right font-medium">Оборот</th>
+              <th className="px-3 py-2 text-right font-medium">% по шкале</th>
+              <th className="px-3 py-2 text-right font-medium">Ставка</th>
+              <th className="px-3 py-2 text-right font-medium">% × оборот</th>
+              <th className="px-3 py-2 text-right font-medium">Итого</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {breakdown.rows.map((r) => (
+              <tr key={r.dispatcherId} className="hover:bg-muted/20">
+                <td className="px-3 py-2 font-medium">
+                  {dispatcherById.get(r.dispatcherId)?.name ?? r.dispatcherId}
                 </td>
-                <td className="py-2 text-right text-base font-bold tabular-nums">
-                  {fmtMoney(breakdown.total)}
+                <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(r.turnover)}</td>
+                <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                  {r.row.percent}%
+                </td>
+                <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                  {fmtMoney(r.fixedPart)}
+                </td>
+                <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                  {fmtMoney(r.percentPart)}
+                </td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  {fmtMoney(r.total)}
                 </td>
               </tr>
-            </tfoot>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+          </tbody>
+          <tfoot className="bg-muted/30">
+            <tr>
+              <td className="px-3 py-2.5 text-sm font-semibold" colSpan={5}>
+                ИТОГО ЗП РОПа
+              </td>
+              <td className="px-3 py-2.5 text-right text-base font-bold tabular-nums">
+                {fmtMoney(breakdown.total)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </CardContent>
   );
 }
 
-// =================== Диспетчер ===================
+// =================== Диспетчеры: матрица + расчёт ===================
 
-function DispatcherMatrixCard({
-  config,
-  onChange,
-  onSave,
+function DispatcherMatrix({
+  ranges,
+  matrix,
+  onChangeRanges,
+  onChangeMatrix,
 }: {
-  config: PayrollConfig;
-  onChange: (matrix: PayrollDispatcherCell[][], ranges?: PayrollRange[]) => void;
-  onSave: (
-    payload: Pick<PayrollConfig, 'dispatcherMatrix'> &
-      Partial<Pick<PayrollConfig, 'dispatcherRanges'>>,
-  ) => void;
+  ranges: PayrollRange[];
+  matrix: PayrollDispatcherCell[][];
+  onChangeRanges: (next: PayrollRange[]) => void;
+  onChangeMatrix: (next: PayrollDispatcherCell[][]) => void;
 }) {
   function updateCell(rowIdx: number, colIdx: number, patch: Partial<PayrollDispatcherCell>) {
-    const next = config.dispatcherMatrix.map((row, i) =>
-      i === rowIdx ? row.map((c, j) => (j === colIdx ? { ...c, ...patch } : c)) : row,
+    onChangeMatrix(
+      matrix.map((row, i) =>
+        i === rowIdx ? row.map((c, j) => (j === colIdx ? { ...c, ...patch } : c)) : row,
+      ),
     );
-    onChange(next);
   }
 
-  function updateRangeBoundary(idx: number, value: number) {
-    const next = config.dispatcherRanges.map((r) => ({ ...r }));
+  function updateBoundary(idx: number, value: number) {
+    const next = ranges.map((r) => ({ ...r }));
     const cur = next[idx];
     if (!cur) return;
     cur.to = value;
     const nxt = next[idx + 1];
     if (nxt) nxt.from = value + 1;
-    onChange(config.dispatcherMatrix, next);
+    onChangeRanges(next);
   }
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <div>
-          <CardTitle className="text-base">Матрица диспетчеров</CardTitle>
-          <p className="text-muted-foreground text-xs">
-            Строки — диапазоны оборота, колонки — стаж. ЗП = оборот × % + фикс. ставка.
-          </p>
-        </div>
-        <Button
-          size="sm"
-          onClick={() =>
-            onSave({
-              dispatcherMatrix: config.dispatcherMatrix,
-              dispatcherRanges: config.dispatcherRanges,
-            })
-          }
-        >
-          Сохранить
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="text-muted-foreground text-left text-xs uppercase">
-                <th className="py-2 pr-3 font-medium">Сумма заявок, грн</th>
-                {TENURE_BUCKETS.map((b) => (
-                  <th key={b} className="py-2 pr-3 text-center font-medium">
-                    {TENURE_LABELS[b]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {config.dispatcherRanges.map((range, rowIdx) => {
-                const isLast = rowIdx === config.dispatcherRanges.length - 1;
-                return (
-                  <tr key={rowIdx} className="border-b align-top last:border-0">
-                    <td className="py-2 pr-3">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="tabular-nums">{range.from.toLocaleString('ru-RU')}</span>
-                        <span className="text-muted-foreground">–</span>
-                        {isLast ? (
-                          <span className="text-muted-foreground">+</span>
-                        ) : (
-                          <Input
-                            type="number"
-                            className="h-7 w-28 tabular-nums"
-                            value={range.to ?? 0}
-                            onChange={(e) =>
-                              updateRangeBoundary(rowIdx, Number(e.target.value) || 0)
-                            }
-                          />
-                        )}
+    <div className="px-6 pb-6">
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40">
+            <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
+              <th className="px-3 py-2 font-medium">Диапазон оборота, грн</th>
+              {TENURE_BUCKETS.map((b) => (
+                <th key={b} className="px-3 py-2 text-center font-medium">
+                  {TENURE_LABELS[b]}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {ranges.map((range, rowIdx) => {
+              const isLast = rowIdx === ranges.length - 1;
+              return (
+                <tr key={rowIdx} className="hover:bg-muted/20">
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground w-20 text-right tabular-nums">
+                        {fmtInt(range.from)}
+                      </span>
+                      <span className="text-muted-foreground">–</span>
+                      {isLast ? (
+                        <span className="text-muted-foreground">+</span>
+                      ) : (
+                        <NumInput
+                          value={range.to ?? 0}
+                          onChange={(v) => updateBoundary(rowIdx, v)}
+                          className="w-28"
+                        />
+                      )}
+                    </div>
+                  </td>
+                  {(matrix[rowIdx] ?? []).map((cell, colIdx) => (
+                    <td key={colIdx} className="px-2 py-2">
+                      <div className="flex items-center gap-1.5">
+                        <NumInput
+                          value={cell.percent}
+                          onChange={(v) => updateCell(rowIdx, colIdx, { percent: v })}
+                          decimals={1}
+                          suffix="%"
+                          step={0.5}
+                          max={100}
+                          className="w-20"
+                        />
+                        <span className="text-muted-foreground text-xs">+</span>
+                        <NumInput
+                          value={cell.fixed}
+                          onChange={(v) => updateCell(rowIdx, colIdx, { fixed: v })}
+                          step={500}
+                          className="w-24"
+                        />
                       </div>
                     </td>
-                    {(config.dispatcherMatrix[rowIdx] ?? []).map((c, colIdx) => (
-                      <td key={colIdx} className="py-2 pr-3">
-                        <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            step="0.1"
-                            className="h-7 w-16 tabular-nums"
-                            value={c.percent}
-                            onChange={(e) =>
-                              updateCell(rowIdx, colIdx, {
-                                percent: Number(e.target.value) || 0,
-                              })
-                            }
-                          />
-                          <span className="text-muted-foreground">% +</span>
-                          <Input
-                            type="number"
-                            className="h-7 w-20 tabular-nums"
-                            value={c.fixed}
-                            onChange={(e) =>
-                              updateCell(rowIdx, colIdx, {
-                                fixed: Number(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
-function DispatcherSalaryCard({
+function DispatcherSalaries({
   config,
   dispatchers,
   turnovers,
@@ -479,107 +469,83 @@ function DispatcherSalaryCard({
     [turnovers],
   );
 
-  const total = useMemo(
-    () =>
-      dispatchers.reduce((sum, d) => {
-        const t = turnoverById.get(d.id);
-        if (!t) return sum;
-        const s = computeDispatcherSalary({
-          config,
-          turnover: t.total,
-          hireDate: d.hireDate,
-        });
-        return sum + s.total;
-      }, 0),
-    [dispatchers, turnoverById, config],
-  );
+  const rows = dispatchers.map((d) => {
+    const t = turnoverById.get(d.id);
+    const turnover = t?.total ?? 0;
+    const salary = computeDispatcherSalary({ config, turnover, hireDate: d.hireDate });
+    const months = tenureMonths(d.hireDate);
+    const bucket = tenureBucket(months);
+    const range = config.dispatcherRanges[salary.rangeIndex] ?? { from: 0, to: null };
+    return { d, t, turnover, salary, months, bucket, range };
+  });
+
+  const total = rows.reduce((sum, r) => sum + r.salary.total, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Расчёт ЗП диспетчеров за период</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b">
-              <tr className="text-muted-foreground text-left text-xs uppercase">
-                <th className="py-2 pr-3 font-medium">Диспетчер</th>
-                <th className="py-2 pr-3 font-medium">Стаж</th>
-                <th className="py-2 pr-3 text-right font-medium">Контракт-комиссии</th>
-                <th className="py-2 pr-3 text-right font-medium">Разовые</th>
-                <th className="py-2 pr-3 text-right font-medium">Оборот</th>
-                <th className="py-2 pr-3 font-medium">Ячейка</th>
-                <th className="py-2 pr-3 text-right font-medium">% × оборот</th>
-                <th className="py-2 pr-3 text-right font-medium">Ставка</th>
-                <th className="py-2 text-right font-medium">Итого</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dispatchers.map((d) => {
-                const t = turnoverById.get(d.id);
-                const turnover = t?.total ?? 0;
-                const s = computeDispatcherSalary({
-                  config,
-                  turnover,
-                  hireDate: d.hireDate,
-                });
-                const months = tenureMonths(d.hireDate);
-                const bucket = tenureBucket(months);
-                const range = config.dispatcherRanges[s.rangeIndex] ?? {
-                  from: 0,
-                  to: null,
-                };
-                return (
-                  <tr key={d.id} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-medium">{d.name}</td>
-                    <td className="py-2 pr-3 text-xs">
-                      {d.hireDate ? (
-                        <>
-                          {months} мес
-                          <div className="text-muted-foreground">{TENURE_LABELS[bucket]}</div>
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">
-                      {fmtMoney(t?.contractCommissions ?? 0)}
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">
-                      {fmtMoney(t?.oneTimeRevenue ?? 0)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-medium tabular-nums">
-                      {fmtMoney(turnover)}
-                    </td>
-                    <td className="py-2 pr-3 text-xs">
-                      <div className="text-muted-foreground">{formatRange(range)}</div>
-                      <div>
-                        {s.cell.percent}% + {fmtMoney(s.cell.fixed)}
-                      </div>
-                    </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{fmtMoney(s.percentPart)}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{fmtMoney(s.fixedPart)}</td>
-                    <td className="py-2 text-right font-semibold tabular-nums">
-                      {fmtMoney(s.total)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2">
-                <td className="py-2 pr-3 font-semibold" colSpan={8}>
-                  ИТОГО ЗП диспетчеров
+    <CardContent className="space-y-3 pt-6">
+      <h3 className="text-sm font-medium">Расчёт ЗП диспетчеров за период</h3>
+      <div className="overflow-x-auto rounded-md border">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40">
+            <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
+              <th className="px-3 py-2 font-medium">Диспетчер</th>
+              <th className="px-3 py-2 font-medium">Стаж</th>
+              <th className="px-3 py-2 text-right font-medium">Контракты</th>
+              <th className="px-3 py-2 text-right font-medium">Разовые</th>
+              <th className="px-3 py-2 text-right font-medium">Оборот</th>
+              <th className="px-3 py-2 font-medium">Ячейка</th>
+              <th className="px-3 py-2 text-right font-medium">Итого</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {rows.map(({ d, t, turnover, salary, months, bucket, range }) => (
+              <tr key={d.id} className="hover:bg-muted/20">
+                <td className="px-3 py-2 font-medium">{d.name}</td>
+                <td className="px-3 py-2">
+                  {d.hireDate ? (
+                    <div className="text-xs">
+                      <div>{months} мес</div>
+                      <div className="text-muted-foreground">{TENURE_LABELS[bucket]}</div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </td>
-                <td className="py-2 text-right text-base font-bold tabular-nums">
-                  {fmtMoney(total)}
+                <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                  {fmtMoney(t?.contractCommissions ?? 0)}
+                </td>
+                <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                  {fmtMoney(t?.oneTimeRevenue ?? 0)}
+                </td>
+                <td className="px-3 py-2 text-right font-medium tabular-nums">
+                  {fmtMoney(turnover)}
+                </td>
+                <td className="px-3 py-2">
+                  <div className="text-xs">
+                    <div className="text-muted-foreground">{formatRange(range)}</div>
+                    <div>
+                      {salary.cell.percent}% + {fmtMoney(salary.cell.fixed)}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                  {fmtMoney(salary.total)}
                 </td>
               </tr>
-            </tfoot>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
+            ))}
+          </tbody>
+          <tfoot className="bg-muted/30">
+            <tr>
+              <td className="px-3 py-2.5 text-sm font-semibold" colSpan={6}>
+                ИТОГО ЗП диспетчеров
+              </td>
+              <td className="px-3 py-2.5 text-right text-base font-bold tabular-nums">
+                {fmtMoney(total)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </CardContent>
   );
 }

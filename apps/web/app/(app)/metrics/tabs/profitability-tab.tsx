@@ -1,14 +1,27 @@
 'use client';
 
+import { Save, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { RegularPricing } from '@tutorcrm/contracts';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, toast } from '@tutorcrm/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  Label,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  toast,
+} from '@tutorcrm/ui';
 
+import { KpiStat } from '@/components/ui/kpi-stat';
+import { NumInput } from '@/components/ui/num-input';
 import { api, ApiClientError } from '@/lib/api-client';
+import { fmtDelta, fmtInt, fmtMoney, fmtPercent } from '@/lib/format-num';
 import { computeProfitability, type ContractRow, type TrialRow } from '@/lib/metrics/extended';
-
-const fmt = (n: number) => `${n.toLocaleString('ru-RU')} грн`;
 
 export function ProfitabilityTab({
   contracts,
@@ -26,6 +39,15 @@ export function ProfitabilityTab({
   const [cutoffDays, setCutoffDays] = useState(initialCutoffDays);
   const [pricing, setPricing] = useState(initialPricing);
   const [saving, setSaving] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState({
+    cutoffDays: initialCutoffDays,
+    pricing: initialPricing,
+  });
+  const dirty =
+    cutoffDays !== savedSnapshot.cutoffDays ||
+    pricing.onePerWeek !== savedSnapshot.pricing.onePerWeek ||
+    pricing.twoPerWeek !== savedSnapshot.pricing.twoPerWeek ||
+    pricing.threePerWeek !== savedSnapshot.pricing.threePerWeek;
 
   const data = useMemo(
     () =>
@@ -46,6 +68,7 @@ export function ProfitabilityTab({
         regularPricing: pricing,
         profitabilityCutoffDays: cutoffDays,
       });
+      setSavedSnapshot({ cutoffDays, pricing });
       toast.success('Сохранено');
     } catch (err) {
       toast.error(err instanceof ApiClientError ? err.message : 'Ошибка');
@@ -54,153 +77,208 @@ export function ProfitabilityTab({
     }
   }
 
+  const efficiencyAccent =
+    data.total.efficiency >= 150
+      ? 'emerald'
+      : data.total.efficiency >= 100
+        ? 'sky'
+        : data.total.efficiency >= 50
+          ? 'amber'
+          : 'rose';
+
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-base">Параметры расчёта</CardTitle>
-            <p className="text-muted-foreground text-xs">
-              Cutoff отбрасывает учеников младше указанного возраста (по умолчанию 45 дней —
-              статистика по новым ещё «смазана»). Прайс «обычных» условий применяется глобально,
-              если для предмета не задан свой.
-            </p>
-          </div>
-          <Button size="sm" disabled={saving} onClick={saveSettings}>
-            Сохранить
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <FieldNum
-              label="Cutoff, дней"
-              value={cutoffDays}
-              onChange={(v) => setCutoffDays(Math.max(1, Math.min(365, v)))}
-            />
-            <FieldNum
-              label="1 раз/нед, грн"
-              value={pricing.onePerWeek}
-              onChange={(v) => setPricing({ ...pricing, onePerWeek: Math.max(0, v) })}
-            />
-            <FieldNum
-              label="2 раз/нед, грн"
-              value={pricing.twoPerWeek}
-              onChange={(v) => setPricing({ ...pricing, twoPerWeek: Math.max(0, v) })}
-            />
-            <FieldNum
-              label="3 раза/нед, грн"
-              value={pricing.threePerWeek}
-              onChange={(v) => setPricing({ ...pricing, threePerWeek: Math.max(0, v) })}
-            />
-          </div>
-          <p className="text-muted-foreground mt-3 text-xs">
-            Cutoff: {data.cutoffDate} (учитываются клиенты, начавшие до этой даты).
-          </p>
-        </CardContent>
-      </Card>
+      {/* Toolbar: компактная сводка параметров + кнопка настроек */}
+      <div className="bg-muted/30 flex flex-wrap items-center gap-3 rounded-md border p-3 text-xs">
+        <span className="text-muted-foreground">Cutoff:</span>
+        <span className="font-medium tabular-nums">{cutoffDays} дн</span>
+        <span className="text-muted-foreground">({data.cutoffDate})</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-muted-foreground">Прайс «обычных»:</span>
+        <span className="tabular-nums">
+          1р <span className="font-medium">{fmtInt(pricing.onePerWeek)}</span> · 2р{' '}
+          <span className="font-medium">{fmtInt(pricing.twoPerWeek)}</span> · 3р{' '}
+          <span className="font-medium">{fmtInt(pricing.threePerWeek)}</span> грн
+        </span>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button size="sm" variant="outline" className="ml-auto">
+              <Settings2 className="mr-1.5 h-3.5 w-3.5" />
+              {dirty ? 'Параметры •' : 'Параметры'}
+            </Button>
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Параметры рентабельности</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-5">
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-wide">Cutoff, дней</Label>
+                <NumInput
+                  value={cutoffDays}
+                  onChange={(v) => setCutoffDays(Math.max(1, Math.min(365, v)))}
+                  step={5}
+                />
+                <p className="text-muted-foreground text-xs">
+                  Отбрасывает учеников младше этого срока — их статистика ещё «смазана».
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide">Прайс «обычных», грн</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <div className="text-muted-foreground mb-1 text-xs">1 раз/нед</div>
+                    <NumInput
+                      value={pricing.onePerWeek}
+                      onChange={(v) => setPricing({ ...pricing, onePerWeek: v })}
+                      step={50}
+                    />
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1 text-xs">2 раз/нед</div>
+                    <NumInput
+                      value={pricing.twoPerWeek}
+                      onChange={(v) => setPricing({ ...pricing, twoPerWeek: v })}
+                      step={50}
+                    />
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1 text-xs">3 раза/нед</div>
+                    <NumInput
+                      value={pricing.threePerWeek}
+                      onChange={(v) => setPricing({ ...pricing, threePerWeek: v })}
+                      step={50}
+                    />
+                  </div>
+                </div>
+                <p className="text-muted-foreground text-xs">
+                  Применяется глобально, если для предмета не задан свой прайс.
+                </p>
+              </div>
+              <Button className="w-full" disabled={saving || !dirty} onClick={saveSettings}>
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                {dirty ? 'Сохранить' : 'Сохранено'}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <SmallStat label="Учеников 45+" value={String(data.total.students)} />
-        <SmallStat label="Ожидаемый доход (обычн.)" value={fmt(data.total.expectedRegularIncome)} />
-        <SmallStat label="Факт доход (контракт)" value={fmt(data.total.actualContractIncome)} />
-        <SmallStat
-          label="Δ / Эффективность"
-          value={`${fmt(data.total.delta)} / ${data.total.efficiency}%`}
+      <div className="grid gap-3 md:grid-cols-4">
+        <KpiStat label="Учеников 45+" value={fmtInt(data.total.students)} accent="neutral" />
+        <KpiStat
+          label="Ожидаемый (обычн.)"
+          value={fmtMoney(data.total.expectedRegularIncome)}
+          accent="sky"
+        />
+        <KpiStat
+          label="Факт (контракт)"
+          value={fmtMoney(data.total.actualContractIncome)}
+          accent="emerald"
+        />
+        <KpiStat
+          label="Эффективность"
+          value={fmtPercent(data.total.efficiency, 0)}
+          hint={`Δ = ${fmtDelta(data.total.delta)}`}
+          accent={efficiencyAccent}
+          size="lg"
         />
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Контракт vs обычные — по репетиторам</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="pt-6">
+          <h3 className="mb-3 text-sm font-medium">Контракт vs обычные — по репетиторам</h3>
+          <div className="overflow-x-auto rounded-md border">
             <table className="w-full text-xs">
-              <thead className="border-b">
-                <tr className="text-muted-foreground text-left uppercase">
-                  <th className="py-2 pr-2 font-medium">Репетитор</th>
-                  <th className="py-2 pr-2 font-medium">Предмет</th>
-                  <th className="py-2 pr-2 text-right font-medium">Пробных 45+</th>
-                  <th className="py-2 pr-2 text-right font-medium">Успех</th>
-                  <th className="py-2 pr-2 text-right font-medium">Отказ</th>
-                  <th className="py-2 pr-2 text-right font-medium">Успех %</th>
-                  <th className="py-2 pr-2 text-right font-medium">Учеников</th>
-                  <th className="py-2 pr-2 text-right font-medium">Удерж., дн</th>
-                  <th className="py-2 pr-2 text-right font-medium">1р/2р/3р</th>
-                  <th className="py-2 pr-2 text-right font-medium">Ср. цена</th>
-                  <th className="py-2 pr-2 text-right font-medium">Ожид. (звич.)</th>
-                  <th className="py-2 pr-2 text-right font-medium">Факт (контракт)</th>
-                  <th className="py-2 pr-2 text-right font-medium">Δ</th>
-                  <th className="py-2 text-right font-medium">Эфф. %</th>
+              <thead className="bg-muted/40">
+                <tr className="text-muted-foreground text-left uppercase tracking-wide">
+                  <th className="px-2 py-2 font-medium">Репетитор</th>
+                  <th className="px-2 py-2 font-medium">Предмет</th>
+                  <th className="px-2 py-2 text-right font-medium">Пробных&nbsp;45+</th>
+                  <th className="px-2 py-2 text-right font-medium">Успех</th>
+                  <th className="px-2 py-2 text-right font-medium">Отказ</th>
+                  <th className="px-2 py-2 text-right font-medium">Успех%</th>
+                  <th className="px-2 py-2 text-right font-medium">Учеников</th>
+                  <th className="px-2 py-2 text-right font-medium">Уд., дн</th>
+                  <th className="px-2 py-2 text-right font-medium">1/2/3р</th>
+                  <th className="px-2 py-2 text-right font-medium">Ср. цена</th>
+                  <th className="px-2 py-2 text-right font-medium">Ожид.</th>
+                  <th className="px-2 py-2 text-right font-medium">Факт</th>
+                  <th className="px-2 py-2 text-right font-medium">Δ</th>
+                  <th className="px-2 py-2 text-right font-medium">Эфф.%</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y">
                 {data.rows.length === 0 ? (
                   <tr>
-                    <td className="text-muted-foreground py-4 text-center" colSpan={14}>
-                      Нет учеников старше cutoff. Уменьшите его или добавьте данные.
+                    <td className="text-muted-foreground py-6 text-center" colSpan={14}>
+                      Нет учеников старше cutoff. Уменьшите его в параметрах.
                     </td>
                   </tr>
                 ) : (
                   data.rows.map((r) => (
-                    <tr key={r.tutorId} className="border-b last:border-0">
-                      <td className="py-2 pr-2 font-medium">{r.tutorName}</td>
-                      <td className="text-muted-foreground py-2 pr-2">{r.subjectName ?? '—'}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{r.trials45plus}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{r.successful}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{r.refused}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{r.successRate}%</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{r.students}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">{r.avgRetentionDays}</td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
+                    <tr key={r.tutorId} className="hover:bg-muted/20">
+                      <td className="px-2 py-2 font-medium">{r.tutorName}</td>
+                      <td className="text-muted-foreground px-2 py-2">{r.subjectName ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{r.trials45plus}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{r.successful}</td>
+                      <td className="px-2 py-2 text-right tabular-nums">{r.refused}</td>
+                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                        {fmtPercent(r.successRate, 0)}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums">{r.students}</td>
+                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                        {r.avgRetentionDays}
+                      </td>
+                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
                         {r.freq1Pct}/{r.freq2Pct}/{r.freq3Pct}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
-                        {r.avgRequestPrice.toLocaleString('ru-RU')}
+                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                        {fmtInt(r.avgRequestPrice)}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
-                        {fmt(r.expectedRegularIncome)}
+                      <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                        {fmtMoney(r.expectedRegularIncome)}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
-                        {fmt(r.actualContractIncome)}
+                      <td className="px-2 py-2 text-right tabular-nums">
+                        {fmtMoney(r.actualContractIncome)}
                       </td>
-                      <td className="py-2 pr-2 text-right tabular-nums">
+                      <td className="px-2 py-2 text-right tabular-nums">
                         <span className={r.delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
-                          {fmt(r.delta)}
+                          {fmtDelta(r.delta)}
                         </span>
                       </td>
-                      <td className="py-2 text-right font-semibold tabular-nums">
-                        {r.efficiency}%
+                      <td className="px-2 py-2 text-right font-semibold tabular-nums">
+                        {fmtPercent(r.efficiency, 0)}
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
               {data.rows.length > 0 ? (
-                <tfoot>
-                  <tr className="border-t-2">
-                    <td className="py-2 pr-2 font-semibold" colSpan={6}>
+                <tfoot className="bg-muted/30">
+                  <tr>
+                    <td className="px-2 py-2.5 font-semibold" colSpan={6}>
                       ИТОГО
                     </td>
-                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
-                      {data.total.students}
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
+                      {fmtInt(data.total.students)}
                     </td>
-                    <td className="py-2 pr-2" colSpan={3} />
-                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
-                      {fmt(data.total.expectedRegularIncome)}
+                    <td className="px-2 py-2.5" colSpan={3} />
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
+                      {fmtMoney(data.total.expectedRegularIncome)}
                     </td>
-                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
-                      {fmt(data.total.actualContractIncome)}
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
+                      {fmtMoney(data.total.actualContractIncome)}
                     </td>
-                    <td className="py-2 pr-2 text-right font-semibold tabular-nums">
+                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums">
                       <span
                         className={data.total.delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}
                       >
-                        {fmt(data.total.delta)}
+                        {fmtDelta(data.total.delta)}
                       </span>
                     </td>
-                    <td className="py-2 text-right font-bold tabular-nums">
-                      {data.total.efficiency}%
+                    <td className="px-2 py-2.5 text-right font-bold tabular-nums">
+                      {fmtPercent(data.total.efficiency, 0)}
                     </td>
                   </tr>
                 </tfoot>
@@ -210,38 +288,5 @@ export function ProfitabilityTab({
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function FieldNum({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div>
-      <div className="text-muted-foreground mb-1 text-xs">{label}</div>
-      <Input
-        type="number"
-        className="h-8 tabular-nums"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-      />
-    </div>
-  );
-}
-
-function SmallStat({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="py-4">
-        <div className="text-muted-foreground text-xs uppercase">{label}</div>
-        <div className="mt-1 font-semibold tabular-nums">{value}</div>
-      </CardContent>
-    </Card>
   );
 }

@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@tutorcrm/ui';
+import { Card, CardContent } from '@tutorcrm/ui';
 
+import { fmtPercent } from '@/lib/format-num';
 import {
   computeRetention,
   type ContractRow,
@@ -25,9 +26,6 @@ export function RetentionTab({
   subjects: SubjectRow[];
 }) {
   const months: MonthKey[] = useMemo(() => lastNMonths(new Date(), 4), []);
-  const monthByKey = new Map(
-    months.map((m) => [`${m.year}-${String(m.month).padStart(2, '0')}`, m]),
-  );
 
   const rows = useMemo(
     () => computeRetention({ contracts, trials, requests, subjects, months }),
@@ -45,76 +43,76 @@ export function RetentionTab({
   }, [rows]);
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Удержание клиентов на контрактах</CardTitle>
-          <p className="text-muted-foreground text-xs">
-            По месяцам × предмет: пробных, успешных, % успешных, отпавших по возрасту начала (этого
-            / прошлого / позапрошлого / 3+ мес. назад). Отпавший = контракт со статусом «закрыт
-            неуспешно» в этом месяце.
+    <Card>
+      <CardContent className="space-y-5 pt-6">
+        <div>
+          <h3 className="text-sm font-medium">Удержание клиентов на контрактах</h3>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            По месяцам × предмет: пробные, успешные, %, отпавшие по возрасту начала. «Отпавший» =
+            контракт со статусом «закрыт неуспешно» в этом месяце.
           </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {[...monthByKey.entries()].reverse().map(([key, m]) => {
-            const monthRows = grouped.get(key) ?? [];
-            return (
-              <div key={key}>
-                <h3 className="mb-2 text-sm font-semibold">{monthLabel(m)}</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead className="border-b">
-                      <tr className="text-muted-foreground text-left uppercase">
-                        <th className="py-2 pr-2 font-medium">Предмет</th>
-                        <th className="py-2 pr-2 text-right font-medium">Пробных</th>
-                        <th className="py-2 pr-2 text-right font-medium">Успешн.</th>
-                        <th className="py-2 pr-2 text-right font-medium">% успешн.</th>
-                        <th className="py-2 pr-2 text-right font-medium">Отпало (тек. мес.)</th>
-                        <th className="py-2 pr-2 text-right font-medium">% от успешн.</th>
-                        <th className="py-2 pr-2 text-right font-medium">Прошл. мес.</th>
-                        <th className="py-2 pr-2 text-right font-medium">Позапрошл.</th>
-                        <th className="py-2 pr-2 text-right font-medium">3+ мес.</th>
-                        <th className="py-2 text-right font-medium">ИТОГО отпало</th>
+        </div>
+
+        {[...months].reverse().map((m) => {
+          const key = `${m.year}-${String(m.month).padStart(2, '0')}`;
+          const monthRows = grouped.get(key) ?? [];
+          return (
+            <div key={key}>
+              <h4 className="text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide">
+                {monthLabel(m)}
+              </h4>
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted/40">
+                    <tr className="text-muted-foreground text-left uppercase tracking-wide">
+                      <th className="px-2 py-2 font-medium">Предмет</th>
+                      <th className="px-2 py-2 text-right font-medium">Пробных</th>
+                      <th className="px-2 py-2 text-right font-medium">Успешн.</th>
+                      <th className="px-2 py-2 text-right font-medium">% усп.</th>
+                      <th className="px-2 py-2 text-right font-medium">Тек. мес.</th>
+                      <th className="px-2 py-2 text-right font-medium">% от усп.</th>
+                      <th className="px-2 py-2 text-right font-medium">Прошл. мес.</th>
+                      <th className="px-2 py-2 text-right font-medium">Позапрошл.</th>
+                      <th className="px-2 py-2 text-right font-medium">3+ мес.</th>
+                      <th className="px-2 py-2 text-right font-medium">ИТОГО отп.</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {monthRows.length === 0 ? (
+                      <tr>
+                        <td className="text-muted-foreground py-4 text-center" colSpan={10}>
+                          Нет данных за этот месяц.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {monthRows.length === 0 ? (
-                        <tr>
-                          <td className="text-muted-foreground py-3 text-center" colSpan={10}>
-                            Нет данных за этот месяц.
+                    ) : (
+                      monthRows.map((r) => (
+                        <tr key={`${r.monthKey}::${r.subjectId}`} className="hover:bg-muted/20">
+                          <td className="px-2 py-2 font-medium">{r.subjectName}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{r.trials}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{r.successful}</td>
+                          <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                            {fmtPercent(r.successRate, 0)}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">{r.droppedThis}</td>
+                          <td className="text-muted-foreground px-2 py-2 text-right tabular-nums">
+                            {fmtPercent(r.droppedThisPct, 0)}
+                          </td>
+                          <td className="px-2 py-2 text-right tabular-nums">{r.droppedLast}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{r.droppedPrev}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{r.dropped3Plus}</td>
+                          <td className="px-2 py-2 text-right font-semibold tabular-nums">
+                            {r.totalDropped}
                           </td>
                         </tr>
-                      ) : (
-                        monthRows.map((r) => (
-                          <tr
-                            key={`${r.monthKey}::${r.subjectId}`}
-                            className="border-b last:border-0"
-                          >
-                            <td className="py-2 pr-2 font-medium">{r.subjectName}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.trials}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.successful}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.successRate}%</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.droppedThis}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">
-                              {r.droppedThisPct}%
-                            </td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.droppedLast}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.droppedPrev}</td>
-                            <td className="py-2 pr-2 text-right tabular-nums">{r.dropped3Plus}</td>
-                            <td className="py-2 text-right font-semibold tabular-nums">
-                              {r.totalDropped}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-    </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
   );
 }

@@ -3,17 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import type { RegularPricing } from '@tutorcrm/contracts';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Input,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@tutorcrm/ui';
+import { Input, Tabs, TabsContent, TabsList, TabsTrigger } from '@tutorcrm/ui';
 
 import type {
   ContractRow,
@@ -68,26 +58,21 @@ export function MetricsView({
   const month = useMemo(() => parseMonthKey(monthValue), [monthValue]);
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Период</CardTitle>
-          <Input
-            type="month"
-            className="h-9 w-44"
-            value={monthValue}
-            onChange={(e) => setMonthValue(e.target.value)}
-          />
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-xs">
-            Месяц применяется ко всем вкладкам, кроме «Контрактных» (показывают последние 6 месяцев)
-            и «Удержания» (последние 4 месяца).
-          </p>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="bg-background sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-3 px-1 pb-2">
+        <Input
+          type="month"
+          className="h-9 w-44"
+          value={monthValue}
+          onChange={(e) => setMonthValue(e.target.value)}
+        />
+        <span className="text-muted-foreground text-xs">
+          «Контрактные» — последние 6 мес, «Удержание» — последние 4 мес, остальное — за выбранный
+          месяц
+        </span>
+      </div>
 
-      <Tabs defaultValue="profit">
+      <Tabs defaultValue="profit" className="space-y-4">
         <TabsList className="h-auto flex-wrap justify-start">
           <TabsTrigger value="profit">Прибыль</TabsTrigger>
           <TabsTrigger value="plan-fact">План / Факт</TabsTrigger>

@@ -2,8 +2,9 @@
 
 import { useMemo } from 'react';
 
-import { Badge, Card, CardContent, CardHeader, CardTitle } from '@tutorcrm/ui';
+import { Badge, Card, CardContent } from '@tutorcrm/ui';
 
+import { fmtPercent } from '@/lib/format-num';
 import {
   computeDispatcherStats,
   type DialogRow,
@@ -65,44 +66,45 @@ export function DispatchersTab({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Активность диспетчеров за месяц</CardTitle>
-          <p className="text-muted-foreground text-xs">
-            Лидов / заявок, успешность, причины отказов, SLA. SLA посчитан приблизительно по времени
-            жизни диалога / заявки — реальные «first response» / «tutor found» отметки появятся на
-            бэке.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
+        <CardContent className="pt-6">
+          <div className="mb-3">
+            <h3 className="text-sm font-medium">Активность диспетчеров за месяц</h3>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              SLA посчитан приблизительно по времени жизни диалога / заявки. Реальные «first
+              response» / «tutor found» отметки появятся на бэке.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-md border">
             <table className="w-full text-sm">
-              <thead className="border-b">
-                <tr className="text-muted-foreground text-left text-xs uppercase">
-                  <th className="py-2 pr-3 font-medium">Диспетчер</th>
-                  <th className="py-2 pr-3 text-right font-medium">Лиды</th>
-                  <th className="py-2 pr-3 text-right font-medium">Заявки</th>
-                  <th className="py-2 pr-3 text-right font-medium">Успех</th>
-                  <th className="py-2 pr-3 text-right font-medium">Отказ</th>
-                  <th className="py-2 pr-3 text-right font-medium">% успеха</th>
-                  <th className="py-2 pr-3 text-right font-medium">SLA первого ответа, мин</th>
-                  <th className="py-2 text-right font-medium">SLA поиска репа, ч</th>
+              <thead className="bg-muted/40">
+                <tr className="text-muted-foreground text-left text-xs uppercase tracking-wide">
+                  <th className="px-3 py-2 font-medium">Диспетчер</th>
+                  <th className="px-3 py-2 text-right font-medium">Лиды</th>
+                  <th className="px-3 py-2 text-right font-medium">Заявки</th>
+                  <th className="px-3 py-2 text-right font-medium">Успех</th>
+                  <th className="px-3 py-2 text-right font-medium">Отказ</th>
+                  <th className="px-3 py-2 text-right font-medium">% успеха</th>
+                  <th className="px-3 py-2 text-right font-medium">SLA ответа, мин</th>
+                  <th className="px-3 py-2 text-right font-medium">SLA поиска, ч</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y">
                 {rows.map((r) => (
-                  <tr key={r.dispatcherId} className="border-b last:border-0">
-                    <td className="py-2 pr-3 font-medium">{r.name}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{r.totalLeads}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{r.totalRequests}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{r.totalSuccess}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{r.totalRefusals}</td>
-                    <td className="py-2 pr-3 text-right font-semibold tabular-nums">
-                      {r.successRate}%
+                  <tr key={r.dispatcherId} className="hover:bg-muted/20">
+                    <td className="px-3 py-2 font-medium">{r.name}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.totalLeads}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.totalRequests}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.totalSuccess}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{r.totalRefusals}</td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                      {fmtPercent(r.successRate, 0)}
                     </td>
-                    <td className="py-2 pr-3 text-right tabular-nums">
+                    <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
                       {r.avgFirstResponseMin || '—'}
                     </td>
-                    <td className="py-2 text-right tabular-nums">{r.avgTutorSearchHours || '—'}</td>
+                    <td className="text-muted-foreground px-3 py-2 text-right tabular-nums">
+                      {r.avgTutorSearchHours || '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -111,21 +113,21 @@ export function DispatchersTab({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         {rows.map((r) => (
           <Card key={r.dispatcherId}>
-            <CardHeader>
-              <CardTitle className="text-base">{r.name}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4 pt-6">
+              <h3 className="text-base font-semibold">{r.name}</h3>
               <div>
-                <div className="text-muted-foreground mb-1 text-xs uppercase">Лиды по этапам</div>
+                <div className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+                  Заявки по этапам
+                </div>
                 {Object.keys(r.byStage).length === 0 ? (
                   <p className="text-muted-foreground text-sm">Нет заявок в этом месяце.</p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
                     {Object.entries(r.byStage).map(([stage, count]) => (
-                      <Badge key={stage} variant="secondary" className="text-[11px]">
+                      <Badge key={stage} variant="secondary" className="text-[11px] font-normal">
                         {STAGE_LABELS[stage] ?? stage}: {count}
                       </Badge>
                     ))}
@@ -133,7 +135,9 @@ export function DispatchersTab({
                 )}
               </div>
               <div>
-                <div className="text-muted-foreground mb-1 text-xs uppercase">Причины отказов</div>
+                <div className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wide">
+                  Причины отказов
+                </div>
                 {r.rejections.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Нет отказов.</p>
                 ) : (
